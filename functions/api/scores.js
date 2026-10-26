@@ -1,3 +1,4 @@
+function safeLogo(u) { return typeof u === 'string' && /^https:\/\/a\.espncdn\.com\//.test(u) ? u : ''; }
 export async function onRequestGet({ request }) {
   const date = new URL(request.url).searchParams.get('date') || new Date().toISOString().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date)) || new Date(date).toISOString().slice(0,10) !== date) {
@@ -10,6 +11,12 @@ export async function onRequestGet({ request }) {
     ['Football', 'soccer/ger.1', 'Bundesliga', 'Germany'],
     ['Football', 'soccer/ita.1', 'Serie A', 'Italy'],
     ['Football', 'soccer/fra.1', 'Ligue 1', 'France'],
+    ['Football', 'soccer/usa.1', 'MLS', 'USA & Canada'],
+    ['Football', 'soccer/ksa.1', 'Saudi Pro League', 'Saudi Arabia'],
+    ['Football', 'soccer/por.1', 'Liga Portugal', 'Portugal'],
+    ['Football', 'soccer/ned.1', 'Eredivisie', 'Netherlands'],
+    ['Football', 'soccer/bra.1', 'Brazil Serie A', 'Brazil'],
+    ['Football', 'soccer/arg.1', 'Argentine Primera', 'Argentina'],
     ['Basketball', 'basketball/nba', 'NBA', 'USA'],
     ['Ice hockey', 'hockey/nhl', 'NHL', 'USA & Canada'],
     ['Baseball', 'baseball/mlb', 'MLB', 'USA & Canada'],
@@ -32,7 +39,7 @@ export async function onRequestGet({ request }) {
       const state = type.completed ? 'finished' : live ? 'live' : 'upcoming';
       const scheduled = type.name === 'STATUS_SCHEDULED';
       const label = scheduled ? new Date(event.date).toISOString().slice(11,16) : type.shortDetail || type.description || status.displayClock || 'Scheduled';
-      return [[home.team?.displayName || home.athlete?.displayName || 'Home', away.team?.displayName || away.athlete?.displayName || 'Away', type.state === 'pre' ? null : home.score ?? null, type.state === 'pre' ? null : away.score ?? null, label, state, home.team?.abbreviation || 'H', away.team?.abbreviation || 'A', String(event.id)]];
+      return [[home.team?.displayName || home.athlete?.displayName || 'Home', away.team?.displayName || away.athlete?.displayName || 'Away', type.state === 'pre' ? null : home.score ?? null, type.state === 'pre' ? null : away.score ?? null, label, state, home.team?.abbreviation || 'H', away.team?.abbreviation || 'A', String(event.id), safeLogo(home.team?.logo), safeLogo(away.team?.logo), String(home.team?.id || ''), String(away.team?.id || '')]];
     });
     return { name, region, sport, path, symbol: '◉', color: '', matches };
   }));
