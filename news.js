@@ -2,7 +2,7 @@ let fan={teams:[],readAt:new Date().toISOString()},fanReady=false,fanError='',ne
 const announcedNews=new Set();
 function followedTeam(id,league){return fan.teams.some(t=>t.id===String(id)&&t.league===league)}
 function followTeamButton(id,name,league){const active=followedTeam(id,league);return `<button class="follow-team ${active?'following':''}" data-follow-team="${esc(id)}" data-follow-name="${esc(name)}" data-follow-league="${esc(league)}" aria-pressed="${active}" ${!fanReady?'disabled':''}>${active?'★ Following team':'☆ Follow team news'}</button>`}
-const FAN_KEY='allsport_fan_v1',FAN_LEAGUES=['soccer/uefa.champions','soccer/eng.1','soccer/esp.1','soccer/ger.1','soccer/ita.1','soccer/fra.1','basketball/nba','hockey/nhl','baseball/mlb'];
+const FAN_KEY='allsport_fan_v1',FAN_LEAGUES=['soccer/uefa.champions','soccer/eng.1','soccer/esp.1','soccer/ger.1','soccer/ita.1','soccer/fra.1','soccer/usa.1','soccer/ksa.1','soccer/por.1','soccer/ned.1','soccer/bra.1','soccer/arg.1','basketball/nba','hockey/nhl','baseball/mlb'];
 function fanLoad(){try{const d=JSON.parse(localStorage.getItem(FAN_KEY)||'null');if(d&&Array.isArray(d.teams))return d}catch{}return{teams:[],readAt:new Date().toISOString()}}
 function fanSave(d){try{localStorage.setItem(FAN_KEY,JSON.stringify(d))}catch{}return d}
 async function fanRequest(body){const d=fanLoad();if(!body)return fanSave(d);
