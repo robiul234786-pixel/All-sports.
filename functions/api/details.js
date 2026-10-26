@@ -12,7 +12,7 @@ export async function onRequestGet({ request }) {
   const id = q.get('id') || '';
   const kind = q.get('kind') || 'match';
   const season = q.get('season') || String(new Date().getUTCFullYear());
-  if (!['soccer/uefa.champions','soccer/eng.1','soccer/esp.1','soccer/ger.1','soccer/ita.1','soccer/fra.1','basketball/nba','hockey/nhl','baseball/mlb'].includes(path) || !/^\d{1,12}$/.test(id) || !['match','team','player'].includes(kind) || !/^\d{4}$/.test(season) || +season < 1990 || +season > new Date().getUTCFullYear()+1) return Response.json({ error: 'Invalid request' }, { status: 400 });
+  if (!['soccer/uefa.champions','soccer/eng.1','soccer/esp.1','soccer/ger.1','soccer/ita.1','soccer/fra.1','soccer/usa.1','soccer/ksa.1','soccer/por.1','soccer/ned.1','soccer/bra.1','soccer/arg.1','basketball/nba','hockey/nhl','baseball/mlb'].includes(path) || !/^\d{1,12}$/.test(id) || !['match','team','player'].includes(kind) || !/^\d{4}$/.test(season) || +season < 1990 || +season > new Date().getUTCFullYear()+1) return Response.json({ error: 'Invalid request' }, { status: 400 });
   const base = `https://site.api.espn.com/apis/site/v2/sports/${path}`;
   try {
     let result;
@@ -34,4 +34,4 @@ export async function onRequestGet({ request }) {
     }
     return Response.json({ ...result, source: 'ESPN', updatedAt: new Date().toISOString() }, { headers: { 'Cache-Control': kind === 'match' ? 'public, max-age=15, s-maxage=15' : 'public, max-age=300, s-maxage=300' } });
   } catch { return Response.json({ error: 'Details are temporarily unavailable. Please retry.' }, { status: 502 }); }
-    }
+}
