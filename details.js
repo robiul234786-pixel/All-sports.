@@ -57,3 +57,5 @@ html+=`<h3>${esc(c.season)} season breakdown</h3>${statGrid(d.statistics)}${c.vi
 document.addEventListener('click',e=>{const tab=e.target.closest('[data-center-tab]');if(tab&&center){center.tab=tab.dataset.centerTab;renderCenter()}const team=e.target.closest('[data-team]');if(team&&center)openEntity('team',team.dataset.team);const player=e.target.closest('[data-player]');if(player&&center)openEntity('player',player.dataset.player);if(e.target.closest('[data-center-back]')){++centerVersion;center.view='match';renderCenter()}if(e.target.closest('[data-center-retry]'))loadMatch(false);if(e.target.closest('[data-entity-retry]'))openEntity(center.view,center.entityId)});
 document.addEventListener('change',e=>{if(e.target.id==='detail-season')openEntity(center.view,center.entityId,e.target.value)});
 document.getElementById('detail').addEventListener('close',()=>{++centerVersion;activeMatch=null;center=null;document.getElementById('detail').classList.remove('match-dialog')});
+.rating.est{font-style:italic;opacity:.9}
+.rating.est::after{content:' est.';font-size:9px;font-style:normal;opacity:.7}
