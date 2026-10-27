@@ -12,3 +12,5 @@ dialog.match-dialog{width:min(900px,95vw);max-height:90vh;padding:32px}.center-s
 .crest-img.big{position:static;display:block;margin:0 auto 8px;width:56px;height:56px;padding:0;background:transparent;border-radius:0}
 .team-line .badge{width:20px;height:20px}
 .center-score .follow-team{display:block;margin:8px auto 0;font-size:11px}
+.rating.est{font-style:italic;opacity:.9}
+.rating.est::after{content:' est.';font-size:9px;font-style:normal;opacity:.7}
