@@ -1,3 +1,7 @@
+const DHAKA = 6 * 3600 * 1000; // Bangladesh is UTC+6, no daylight saving
+const dhakaDay = (iso) => new Date(new Date(iso).getTime() + DHAKA).toISOString().slice(0, 10);
+const dhakaClock = (iso) => new Date(new Date(iso).getTime() + DHAKA).toISOString().slice(11, 16);
+const ymd = (d) => d.toISOString().slice(0, 10).replaceAll('-', '');
 function safeLogo(u) { return typeof u === 'string' && /^https:\/\/a\.espncdn\.com\//.test(u) ? u : ''; }
 export async function onRequestGet({ request }) {
   const date = new URL(request.url).searchParams.get('date') || new Date().toISOString().slice(0, 10);
@@ -22,11 +26,20 @@ export async function onRequestGet({ request }) {
     ['Baseball', 'baseball/mlb', 'MLB', 'USA & Canada'],
   ];
   const results = await Promise.allSettled(feeds.map(async ([sport, path, name, region]) => {
-    const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${date.replaceAll('-', '')}&limit=100`, { signal: AbortSignal.timeout(8000) });
+    const base = new Date(date + 'T00:00:00Z');
+    const range = `${ymd(new Date(base.getTime() - 864e5))}-${ymd(new Date(base.getTime() + 864e5))}`;
+    let ranged = true;
+    let response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${range}&limit=300`, { signal: AbortSignal.timeout(8000) });
+    if (!response.ok) {
+      ranged = false;
+      response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${date.replaceAll('-', '')}&limit=100`, { signal: AbortSignal.timeout(8000) });
+    }
     if (!response.ok) throw new Error('Feed unavailable');
     const data = await response.json();
     if (!Array.isArray(data.events)) throw new Error('Invalid feed');
-    const matches = data.events.flatMap((event) => {
+    // Show the matches whose kick-off falls on the selected day in Bangladesh time.
+    const events = ranged ? data.events.filter((e) => dhakaDay(e.date) === date) : data.events;
+    const matches = events.flatMap((event) => {
       const competition = event.competitions?.[0];
       const teams = competition?.competitors;
       if (!teams || teams.length !== 2) return [];
@@ -38,7 +51,7 @@ export async function onRequestGet({ request }) {
       const live = type.state === 'in' && !/postpon|suspend|delay|cancel/i.test(type.name || '');
       const state = type.completed ? 'finished' : live ? 'live' : 'upcoming';
       const scheduled = type.name === 'STATUS_SCHEDULED';
-      const label = scheduled ? new Date(event.date).toISOString().slice(11,16) : type.shortDetail || type.description || status.displayClock || 'Scheduled';
+      const label = scheduled ? dhakaClock(event.date) : type.shortDetail || type.description || status.displayClock || 'Scheduled';
       return [[home.team?.displayName || home.athlete?.displayName || 'Home', away.team?.displayName || away.athlete?.displayName || 'Away', type.state === 'pre' ? null : home.score ?? null, type.state === 'pre' ? null : away.score ?? null, label, state, home.team?.abbreviation || 'H', away.team?.abbreviation || 'A', String(event.id), safeLogo(home.team?.logo), safeLogo(away.team?.logo), String(home.team?.id || ''), String(away.team?.id || '')]];
     });
     return { name, region, sport, path, symbol: '◉', color: '', matches };
@@ -49,4 +62,4 @@ export async function onRequestGet({ request }) {
   return Response.json({ date, groups, unavailable, updatedAt: new Date().toISOString(), source: 'ESPN' }, {
     headers: { 'Cache-Control': 'public, max-age=15, s-maxage=15' },
   });
-        }
+}
