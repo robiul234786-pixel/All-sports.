@@ -24,6 +24,79 @@ dialog.match-dialog{width:min(900px,95vw);max-height:90vh;padding:32px}.center-s
 .pp-rating.top{outline:2px solid #ffd54a}
 .pp-evt{position:absolute;bottom:-6px;right:-12px;font-style:normal;font-size:10px;line-height:1;background:rgba(0,0,0,.5);border-radius:8px;padding:2px 3px;white-space:nowrap}
 
+/* ===== Generated night overrides ===== */
+html[data-theme="night"] .mainnav button{color:var(--muted)}
+html[data-theme="night"] .new{background:#18213f}
+html[data-theme="night"] .search{background:#18213f;color:var(--muted);border:1px solid var(--line)}
+html[data-theme="night"] .icon-btn{color:var(--muted)}
+html[data-theme="night"] .avatar{background:#18213f;border:1px solid var(--line)}
+html[data-theme="night"] .sport-tab{color:var(--muted)}
+html[data-theme="night"] .sport-tab.active{background:#18213f}
+html[data-theme="night"] .sport-tab small{background:#1b2547;color:var(--muted)}
+html[data-theme="night"] .side-label{color:var(--muted)}
+html[data-theme="night"] .side-item.selected{background:#18213f;color:var(--accent)}
+html[data-theme="night"] .count{color:var(--muted)}
+html[data-theme="night"] .all-leagues{color:var(--muted)}
+html[data-theme="night"] .sidebar-promo{background:#18213f;border:1px solid var(--line)}
+html[data-theme="night"] .sidebar-promo:after{border:18px solid var(--line)}
+html[data-theme="night"] .mini-circles{color:var(--accent)}
+html[data-theme="night"] .sidebar-promo p{color:var(--muted)}
+html[data-theme="night"] .side-footer{color:var(--muted)}
+html[data-theme="night"] .eyebrow{color:var(--muted)}
+html[data-theme="night"] .welcome p{color:var(--muted)}
+html[data-theme="night"] .today-label{color:var(--muted)}
+html[data-theme="night"] .section-header p{color:var(--muted)}
+html[data-theme="night"] .section-header>span{color:var(--muted)}
+html[data-theme="night"] .date-strip button small{color:var(--muted)}
+html[data-theme="night"] .date-strip button.active{background:#18213f;color:var(--accent)}
+html[data-theme="night"] .date-strip button.active small{color:var(--accent)}
+html[data-theme="night"] .filters button{border:1px solid var(--line)}
+html[data-theme="night"] .group-heading{background:#18213f;border-bottom:1px solid var(--line)}
+html[data-theme="night"] .group-heading>span:last-child{color:var(--muted)}
+html[data-theme="night"] .match-row{border-bottom:1px solid var(--line)}
+html[data-theme="night"] .match-row:hover{background:#18213f}
+html[data-theme="night"] .match-time{border-right:1px solid var(--line)}
+html[data-theme="night"] .badge{background:#18213f;color:var(--muted)}
+html[data-theme="night"] .small-live{background:#18213f}
+html[data-theme="night"] .competition{color:var(--muted)}
+html[data-theme="night"] .possession-bar i{border-right:3px solid var(--line)}
+html[data-theme="night"] .subtle-button{background:#18213f;border:1px solid var(--line)}
+html[data-theme="night"] .lime-icon{color:var(--accent)}
+html[data-theme="night"] .learn-card p{color:var(--muted)}
+html[data-theme="night"] .trending-icon{background:#18213f;border:1px solid var(--line)}
+html[data-theme="night"] .trending-row small{color:var(--muted)}
+html[data-theme="night"] .trending-row>span:last-child{color:var(--accent)}
+html[data-theme="night"] .sport-card p{color:var(--muted)}
+html[data-theme="night"] dialog{border:1px solid var(--line)}
+html[data-theme="night"] .close{color:var(--muted)}
+html[data-theme="night"] dialog p{color:var(--muted)}
+html[data-theme="night"] .detail-stats{background:#18213f}
+html[data-theme="night"] .detail-stats small{color:var(--muted)}
+html[data-theme="night"] .feed-status{background:#18213f;color:var(--accent);border:1px solid var(--line)}
+html[data-theme="night"] .feed-status.error{background:#18213f;border-color:var(--line)}
+html[data-theme="night"] .featured>p{color:var(--muted)}
+html[data-theme="night"] .center-meta{color:var(--muted)}
+html[data-theme="night"] .lineup-columns h4{background:#18213f}
+html[data-theme="night"] .lineup-player small{color:var(--muted)}
+html[data-theme="night"] .rating{background:#18213f}
+html[data-theme="night"] .stat-grid>div{background:#18213f}
+html[data-theme="night"] .stat-grid small{color:var(--muted)}
+html[data-theme="night"] .detail-empty,html[data-theme="night"] .detail-loading,html[data-theme="night"] .detail-error{background:#18213f;color:var(--muted)}
+html[data-theme="night"] .detail-error{background:#18213f}
+html[data-theme="night"] .season-select select{border:1px solid var(--line)}
+html[data-theme="night"] .profile-facts span{background:#18213f}
+html[data-theme="night"] .player-portrait{background:#1b2547;color:var(--accent)}
+html[data-theme="night"] .pitch-player .player-portrait{border:2px solid var(--line)}
+html[data-theme="night"] .follow-team{background:#18213f;color:var(--accent);border:1px solid var(--line)}
+html[data-theme="night"] .follow-team.following{background:#1b2547;border-color:var(--line)}
+html[data-theme="night"] .followed-teams>span{background:#18213f}
+html[data-theme="night"] .news-item{border-bottom:1px solid var(--line)}
+html[data-theme="night"] .news-item.unread{background:#18213f}
+html[data-theme="night"] .news-item a{color:var(--accent)}
+html[data-theme="night"] .news-item small{color:var(--muted)}
+html[data-theme="night"] .crest-img{background:var(--surface)}
+html[data-theme="night"] .pitch-avg{background:#18213f;color:var(--accent)}
+
 /* ===== Night theme (default) ===== */
 html[data-theme="night"]{--ink:#e8ecf7;--green:#38e08c;--muted:#8d97b5;--line:#232c4a;--lime:#c6ff4d;--bg:#0b1020;--surface:#141b33;--accent:#38e08c;color-scheme:dark}
 html[data-theme="night"] body{background:radial-gradient(1200px 500px at 70% -10%,#16224a 0,transparent 60%),var(--bg)}
@@ -81,3 +154,11 @@ html[data-theme="night"] .sidebar-promo p{color:var(--muted)}
 html[data-theme="night"] .sidebar-promo button,html[data-theme="night"] #featured-details,html[data-theme="night"] .learn-card button{background:#38e08c;color:#06210f;border-color:#38e08c}
 html[data-theme="night"] .side-footer{color:var(--muted)}
 html[data-theme="night"] .featured button,html[data-theme="night"] .featured #featured-details{background:#38e08c;color:#06210f;border-color:#38e08c}
+
+@media(max-width:720px){#theme-toggle{display:inline-flex!important;align-items:center;justify-content:center}}
+html[data-theme="night"] .badge{background:#e8ecf7;color:#0b1020}
+html[data-theme="night"] .follow-team.following{background:#14392e;border-color:#38e08c;color:#38e08c}
+html[data-theme="night"] .followed-teams>span{background:#1d2850;color:var(--ink)}
+.close:focus:not(:focus-visible){outline:none}
+html[data-theme="night"] .close{background:none;border:0;color:var(--muted)}
+dialog .close:focus,dialog .close:focus-visible{outline:none;box-shadow:none}
