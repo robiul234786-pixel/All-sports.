@@ -77,12 +77,12 @@ document.addEventListener('click',e=>{if(e.target.closest('[data-refresh]')&&!fe
 setInterval(()=>{if(!document.hidden&&!fetching)refreshScores();},30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!fetching)refreshScores();});
 window.addEventListener('online',()=>{if(!fetching)refreshScores();});
-document.querySelector('.today-label').innerHTML=icon('calendar')+' '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'});
+document.querySelector('.today-label').innerHTML=icon('calendar')+' <span id="today-text"></span>';updateTodayLabel();
 refreshScores();updateFeedPanels();
 
-document.addEventListener('click',async e=>{if(e.target.closest('[data-goal-alerts]')){if(!('Notification' in window)){toastMsg('Alerts are not supported in this app view. In-app banners will still appear.');return}try{await Notification.requestPermission()}catch{}render()}});
+document.addEventListener('click',async e=>{if(e.target.closest('#about-theme')){applyTheme(document.documentElement.dataset.theme==='night'?'light':'night');return}if(e.target.closest('[data-goal-alerts]')){if(!('Notification' in window)){toastMsg('Alerts are not supported in this app view. In-app banners will still appear.');return}try{await Notification.requestPermission()}catch{}render()}});
 
-function updateTodayLabel(){document.body.dataset.page=page;document.querySelectorAll('.mainnav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));const el=document.getElementById('today-text');if(el)el.textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',timeZone:'Asia/Dhaka'})}
+function updateTodayLabel(){document.body.dataset.view=page;document.querySelectorAll('.mainnav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));const el=document.getElementById('today-text');if(el)el.textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',timeZone:'Asia/Dhaka'})}
 const ABOUT_NAME='Robiul';
 const ABOUT_CONTACT='';
 function renderAbout(){
@@ -100,6 +100,7 @@ function renderAbout(){
   <li>খেলোয়াড়ের কিছু ছবি Wikipedia থেকে নেওয়া হয়।</li>
   <li><b>রেটিং আনুমানিক:</b> গোল, অ্যাসিস্ট, শট, কার্ড ইত্যাদি থেকে অ্যাপ নিজে হিসাব করে। এটা Sofascore বা FotMob এর অফিসিয়াল রেটিং নয়।</li>
   <li>ALL Sports স্বাধীন একটি প্রজেক্ট। ESPN, Wikipedia, Sofascore বা FotMob এর সঙ্গে এর কোনো সম্পর্ক নেই।</li></ul></div>
+ <div class="about-card"><h3>থিম</h3><p>পছন্দ মতো রাতের (গাঢ়) বা দিনের (সাদা) থিম বেছে নিন।</p><button class="subtle-button" id="about-theme">🌙 / ☀️ থিম বদলান</button></div>
  ${contact}
  <p class="about-foot">ভালো লাগলে বন্ধুদের জানান। ধন্যবাদ আপনাকে। ⚽</p></div>`;
 }
