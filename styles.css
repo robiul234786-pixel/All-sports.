@@ -71,7 +71,7 @@ html[data-theme="night"] .match-time{border-color:var(--line);color:var(--muted)
 html[data-theme="night"] .match-time.live{color:#ff7a66}
 html[data-theme="night"] .badge{color:#0b1020}
 
-body[data-page="about"] .welcome,body[data-page="about"] .hero{display:none}
+body[data-view="about"] .welcome,body[data-view="about"] .hero{display:none}
 html[data-theme="night"] .sport-tab{color:var(--muted)}
 html[data-theme="night"] .sport-tab.active{background:#38e08c;color:#06210f}
 html[data-theme="night"] .sport-tab small{background:#232c4a;color:var(--muted)}
