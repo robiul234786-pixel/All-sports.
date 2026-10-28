@@ -6,7 +6,103 @@ async function get(url) {
   if (!response.ok) throw new Error('Unavailable');
   return response.json();
 }
-export async function onRequestGet({ request }) {
+// ---------- Optional API-Football enrichment (passes, tackles, dribbles, rating, photos) ----------
+// Enabled only when the Cloudflare variable APIFOOTBALL_KEY is set. Without it nothing changes.
+const AF = 'https://v3.football.api-sports.io';
+const STOP = new Set(['fc','cf','ac','as','afc','sc','ssc','us','ud','cd','club','calcio','de','the','fk','sk','sv']);
+const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const toks = (s) => norm(s).split(' ').filter((x) => x && !STOP.has(x));
+function sameTeam(a, b) {
+  const A = toks(a), B = toks(b);
+  if (!A.length || !B.length) return false;
+  const sa = A.join(' '), sb = B.join(' ');
+  if (sa === sb || sa.includes(sb) || sb.includes(sa)) return true;
+  return A.filter((x) => B.includes(x)).length / Math.max(A.length, B.length) >= 0.6;
+}
+async function afGet(env, path, ttl) {
+  let cache = null;
+  const key = new Request('https://af.cache.internal' + path);
+  try { cache = caches.default; const hit = await cache.match(key); if (hit) return await hit.json(); } catch { cache = null; }
+  const r = await fetch(AF + path, { headers: { 'x-apisports-key': env.APIFOOTBALL_KEY }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error('AF unavailable');
+  const j = await r.json();
+  const failed = j.errors && (Array.isArray(j.errors) ? j.errors.length : Object.keys(j.errors).length);
+  if (failed || !Array.isArray(j.response)) throw new Error('AF error');
+  if (cache) { try { await cache.put(key, new Response(JSON.stringify(j), { headers: { 'Cache-Control': `public, max-age=${ttl}` } })); } catch {} }
+  return j;
+}
+const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+function shapePlayer(x) {
+  const s = x.statistics?.[0] || {};
+  const total = num(s.passes?.total), raw = num(s.passes?.accuracy);
+  const acc = raw === null ? null : (total && raw <= total ? (raw / total) * 100 : raw <= 100 ? raw : null);
+  const photo = typeof x.player?.photo === 'string' && x.player.photo.startsWith('https://media.api-sports.io/') ? x.player.photo : '';
+  const rating = num(s.games?.rating);
+  return {
+    rating: rating && rating > 0 ? rating : null, minutes: num(s.games?.minutes), number: num(s.games?.number),
+    passes: { total, key: num(s.passes?.key), acc },
+    tackles: { total: num(s.tackles?.total), blocks: num(s.tackles?.blocks), interceptions: num(s.tackles?.interceptions) },
+    duels: { total: num(s.duels?.total), won: num(s.duels?.won) },
+    dribbles: { attempts: num(s.dribbles?.attempts), success: num(s.dribbles?.success) },
+    fouls: { drawn: num(s.fouls?.drawn), committed: num(s.fouls?.committed) },
+    shots: { total: num(s.shots?.total), on: num(s.shots?.on) },
+    goals: { total: num(s.goals?.total), assists: num(s.goals?.assists), saves: num(s.goals?.saves), conceded: num(s.goals?.conceded) },
+    photo,
+  };
+}
+function findPlayer(idx, p) {
+  const full = norm(p.athlete?.fullName || p.athlete?.displayName);
+  if (!full) return null;
+  const last = full.split(' ').pop();
+  const jersey = String(p.jersey || '');
+  const nameOk = (e) => {
+    if (!e.n) return false;
+    if (e.n === full) return true;
+    const ep = e.n.split(' ');
+    const initial = ep.length > 1 && ep[0].length === 1;
+    const rest = initial ? ep.slice(1).join(' ') : e.n;
+    if (rest && (full === rest || full.endsWith(' ' + rest))) return initial ? full[0] === ep[0] : true;
+    return last.length > 2 && ep.includes(last);
+  };
+  const hits = idx.filter(nameOk);
+  if (hits.length === 1) return hits[0];
+  if (hits.length > 1 && jersey) return hits.find((e) => String(e.num) === jersey) || null;
+  if (!hits.length && jersey) {
+    const e = idx.find((x) => String(x.num) === jersey);
+    if (e && e.n.split(' ').some((w) => w.length > 2 && full.split(' ').includes(w))) return e;
+  }
+  return null;
+}
+async function enrichWithApiFootball(env, summary, rosters) {
+  const comp = summary.header?.competitions?.[0];
+  const state = comp?.status?.type?.state;
+  if (!comp?.date || state === 'pre') return { used: false, reason: 'not-started' };
+  const cs = comp.competitors || [];
+  const home = cs.find((c) => c.homeAway === 'home')?.team?.displayName;
+  const away = cs.find((c) => c.homeAway === 'away')?.team?.displayName;
+  if (!home || !away) return { used: false, reason: 'teams-missing' };
+  const day = new Date(comp.date).toISOString().slice(0, 10);
+  const list = await afGet(env, `/fixtures?date=${day}`, 600);
+  const fx = list.response.find((f) => sameTeam(f.teams?.home?.name, home) && sameTeam(f.teams?.away?.name, away));
+  if (!fx) return { used: false, reason: 'fixture-not-found' };
+  const pl = await afGet(env, `/fixtures/players?fixture=${fx.fixture.id}`, state === 'post' ? 21600 : 60);
+  let matched = 0, total = 0;
+  for (const t of rosters) {
+    const side = pl.response.find((x) => sameTeam(x.team?.name, t.team?.displayName));
+    if (!side) continue;
+    const idx = (side.players || []).map((x) => ({ n: norm(x.player?.name), num: x.statistics?.[0]?.games?.number, x }));
+    for (const p of t.roster || []) {
+      total++;
+      const hit = findPlayer(idx, p);
+      if (!hit) continue;
+      p.api = shapePlayer(hit.x);
+      if (p.api.photo && p.athlete) p.athlete.apiPhoto = p.api.photo;
+      matched++;
+    }
+  }
+  return { used: true, matched, total, source: 'API-Football' };
+}
+export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
   const path = q.get('league') || '';
   const id = q.get('id') || '';
@@ -20,6 +116,9 @@ export async function onRequestGet({ request }) {
       const d = await get(`${base}/summary?event=${id}`);
       if (!d.header) throw new Error('Unavailable');
       result = { header: d.header, rosters: d.rosters || [], teams: d.boxscore?.teams || [], players: d.boxscore?.players || [], events: d.keyEvents || d.scoringPlays || d.plays || [], commentary: d.commentary || [], venue: d.gameInfo?.venue?.fullName || '', season: d.header.season?.year };
+      if (path.startsWith('soccer/') && env?.APIFOOTBALL_KEY) {
+        try { result.provider = await enrichWithApiFootball(env, d, result.rosters); } catch { result.provider = { used: false, reason: 'error' }; }
+      }
     } else {
       const [sport, league] = path.split('/');
       const entity = kind === 'team' ? 'teams' : 'athletes';
