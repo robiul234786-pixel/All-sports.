@@ -1,4 +1,4 @@
-// National teams (all FIFA members) — list + squad, recent results and fixtures.
+// National teams (all FIFA members) \u2014 list + squad, recent results and fixtures.
 // Squad / fixture data comes from API-Football and needs the APIFOOTBALL_KEY secret.
 const RAW = `# AFC
 Afghanistan|AF
@@ -61,7 +61,7 @@ Chad|TD
 Comoros|KM
 Congo|CG
 Congo DR|CD|DR Congo
-Côte d'Ivoire|CI|Ivory Coast
+C\u00f4te d'Ivoire|CI|Ivory Coast
 Djibouti|DJ
 Egypt|EG
 Equatorial Guinea|GQ
@@ -88,7 +88,7 @@ Namibia|NA
 Niger|NE
 Nigeria|NG
 Rwanda|RW
-São Tomé and Príncipe|ST|Sao Tome and Principe
+S\u00e3o Tom\u00e9 and Pr\u00edncipe|ST|Sao Tome and Principe
 Senegal|SN
 Seychelles|SC
 Sierra Leone|SL
@@ -115,7 +115,7 @@ Canada|CA
 Cayman Islands|KY
 Costa Rica|CR
 Cuba|CU
-Curaçao|CW|Curacao
+Cura\u00e7ao|CW|Curacao
 Dominica|DM
 Dominican Republic|DO
 El Salvador|SV
@@ -214,7 +214,7 @@ Slovenia|SI
 Spain|ES
 Sweden|SE
 Switzerland|CH
-Türkiye|TR|Turkey
+T\u00fcrkiye|TR|Turkey
 Ukraine|UA
 Wales|WAL`;
 
