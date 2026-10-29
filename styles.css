@@ -219,3 +219,12 @@ html,body{touch-action:pan-y pinch-zoom;overscroll-behavior-x:none}
 .player-card{display:flex;align-items:center;gap:14px;margin:6px 0 10px;flex-wrap:wrap}
 .player-card h2{margin:0}
 .player-card-img{width:84px;height:84px;border-radius:50%;object-fit:cover}
+
+/* ===== Hard lock against sideways movement ===== */
+html,body{width:100%;max-width:100%;overflow-x:clip!important;touch-action:pan-y!important}
+.layout>*,main,#page-content{min-width:0;max-width:100%}
+dialog{max-width:calc(100vw - 24px)}
+dialog img,dialog svg,dialog table{max-width:100%}
+
+.feed-status{font-size:11px;padding:8px 12px;line-height:1.5;gap:8px}
+.feed-status button{font-size:11px;padding:4px 9px}
