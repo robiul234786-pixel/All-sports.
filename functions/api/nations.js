@@ -239,43 +239,94 @@ const FEATURED = ['Bangladesh', 'Argentina', 'Brazil'];
 
 const AF = 'https://v3.football.api-sports.io';
 const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+// ---- small cache helpers (Cloudflare Cache API). Failures are never cached. ----
+const cacheReq = (key) => new Request('https://nations.cache.internal/v3/' + encodeURIComponent(key));
+async function cacheGet(key) { try { const hit = await caches.default.match(cacheReq(key)); return hit ? await hit.json() : undefined; } catch { return undefined; } }
+async function cachePut(key, value, ttl) { try { await caches.default.put(cacheReq(key), new Response(JSON.stringify(value), { headers: { 'Cache-Control': `public, max-age=${ttl}` } })); } catch {} }
 async function cached(key, ttl, fn) {
-  let cache = null;
-  const req = new Request('https://nations.cache.internal/' + encodeURIComponent(key));
-  try { cache = caches.default; const hit = await cache.match(req); if (hit) return await hit.json(); } catch { cache = null; }
+  const hit = await cacheGet(key);
+  if (hit !== undefined) return hit;
   const value = await fn();
-  if (cache && value !== undefined) { try { await cache.put(req, new Response(JSON.stringify(value), { headers: { 'Cache-Control': `public, max-age=${ttl}` } })); } catch {} }
+  if (value !== undefined && value !== null) await cachePut(key, value, ttl);
   return value;
+}
+
+// ---- API-Football with readable errors ----
+function classify(msg) {
+  if (/rate/i.test(msg)) return 'rate-limit';
+  if (/request limit|quota|per day|daily/i.test(msg)) return 'quota';
+  if (/plan|subscription|do not have access|not have access/i.test(msg)) return 'plan';
+  if (/token|api.?key|invalid|suspend|account|inactive/i.test(msg)) return 'key';
+  return 'other';
 }
 async function afGet(env, path) {
   const r = await fetch(AF + path, { headers: { 'x-apisports-key': env.APIFOOTBALL_KEY }, signal: AbortSignal.timeout(8000) });
-  if (!r.ok) throw new Error('AF unavailable');
+  if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { kind: r.status === 429 ? 'rate-limit' : 'other' });
   const j = await r.json();
-  const failed = j.errors && (Array.isArray(j.errors) ? j.errors.length : Object.keys(j.errors).length);
-  if (failed || !Array.isArray(j.response)) throw new Error('AF error');
+  const errs = j.errors && (Array.isArray(j.errors) ? j.errors : Object.values(j.errors));
+  if (errs && errs.length) { const msg = String(errs[0]).slice(0, 140); throw Object.assign(new Error(msg), { kind: classify(msg) }); }
+  if (!Array.isArray(j.response)) throw Object.assign(new Error('Unexpected response'), { kind: 'other' });
   return j;
 }
+const describe = (e) => ({ kind: e?.kind || 'other', message: String(e?.message || '').slice(0, 140) });
+
 const youth = /\b(u\s?\d{2}|women|w|olympic|b team|ii)\b/i;
-async function resolveTeam(env, n) {
-  return cached('team:' + n.name, 30 * 86400, async () => {
-    const queries = [n.name, ...n.alts].filter((q, i, a) => q.length >= 3 && a.indexOf(q) === i);
-    for (const q of queries) {
-      let j; try { j = await afGet(env, `/teams?search=${encodeURIComponent(q)}`); } catch { continue; }
-      const nat = j.response.filter((x) => x.team?.national && !youth.test(x.team.name || ''));
-      const wanted = new Set([n.name, ...n.alts].map(norm));
-      const hit = nat.find((x) => wanted.has(norm(x.team.name))) || nat.find((x) => norm(x.team.country) && wanted.has(norm(x.team.country)));
-      if (hit) return { id: hit.team.id, name: hit.team.name, logo: hit.team.logo, founded: hit.team.founded || null };
-    }
-    return null;
-  });
+async function searchTeam(env, n) {
+  const queries = [n.name, ...n.alts].filter((q, i, a) => q.length >= 3 && a.indexOf(q) === i);
+  let lastError = null;
+  for (const q of queries) {
+    let j;
+    try { j = await afGet(env, `/teams?search=${encodeURIComponent(q)}`); } catch (e) { lastError = e; continue; }
+    const nat = j.response.filter((x) => x.team?.national && !youth.test(x.team.name || ''));
+    const wanted = new Set([n.name, ...n.alts].map(norm));
+    const hit = nat.find((x) => wanted.has(norm(x.team.name))) || nat.find((x) => wanted.has(norm(x.team.country)));
+    if (hit) return { id: hit.team.id, name: hit.team.name, logo: hit.team.logo, founded: hit.team.founded || null };
+  }
+  if (lastError) throw lastError; // a provider error must never look like "team not found"
+  return null;
 }
+async function resolveTeam(env, n) {
+  const key = 'team:' + n.name;
+  const hit = await cacheGet(key);
+  if (hit) return hit;
+  const found = await searchTeam(env, n);
+  if (found) await cachePut(key, found, 30 * 86400);
+  return found;
+}
+
 const okImg = (u, kind) => typeof u === 'string' && u.startsWith('https://media.api-sports.io/football/' + kind + '/') ? u : '';
 const POS = ['Goalkeeper', 'Defender', 'Midfielder', 'Attacker'];
+function groupPlayers(players) {
+  return POS.map((pos) => ({ pos, players: players.filter((p) => p.position === pos) })).filter((g) => g.players.length);
+}
 function shapeFixture(f) {
   return { id: f.fixture?.id, date: f.fixture?.date, status: f.fixture?.status?.short || '', league: f.league?.name || '', round: f.league?.round || '',
     home: { name: f.teams?.home?.name || '', logo: okImg(f.teams?.home?.logo, 'teams') }, away: { name: f.teams?.away?.name || '', logo: okImg(f.teams?.away?.logo, 'teams') },
     hg: f.goals?.home ?? null, ag: f.goals?.away ?? null };
 }
+
+// ---- Fallback squad from ESPN (World Cup squads; may be outdated) ----
+const espnPos = (s) => { s = String(s || '').toLowerCase(); return /goal/.test(s) ? 'Goalkeeper' : /back|defen/.test(s) ? 'Defender' : /midfield/.test(s) ? 'Midfielder' : /forward|strik|wing|attack/.test(s) ? 'Attacker' : ''; };
+async function espnSquad(n) {
+  const list = await cached('espn-nations', 86400, async () => {
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/teams?limit=200', { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error('espn');
+    const j = await r.json();
+    return (j.sports?.[0]?.leagues?.[0]?.teams || []).map((x) => ({ id: x.team?.id, name: x.team?.displayName })).filter((x) => x.id);
+  });
+  const wanted = new Set([n.name, ...n.alts].map(norm));
+  const t = (list || []).find((x) => wanted.has(norm(x.name)));
+  if (!t) return null;
+  const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/teams/${t.id}/roster`, { signal: AbortSignal.timeout(8000) });
+  if (!r.ok) return null;
+  const j = await r.json();
+  const flat = (j.athletes || []).flatMap((a) => (Array.isArray(a.items) ? a.items : [a]));
+  const players = flat.map((a) => ({ id: a.id, name: a.displayName || a.fullName, age: a.age ?? null, number: a.jersey ? Number(a.jersey) : null, position: espnPos(a.position?.displayName || a.position?.name),
+    photo: typeof a.headshot?.href === 'string' && a.headshot.href.startsWith('https://a.espncdn.com/') ? a.headshot.href : '' })).filter((p) => p.name && p.position);
+  return players.length ? players : null;
+}
+
 export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
   const name = q.get('team');
@@ -286,24 +337,29 @@ export async function onRequestGet({ request, env }) {
   const n = NATIONS.find((x) => x.name === name);
   if (!n) return Response.json({ error: 'Unknown team' }, { status: 400 });
   if (!env?.APIFOOTBALL_KEY) return Response.json({ error: 'not-configured' }, { status: 503 });
+  const part = q.get('part') === 'fixtures' ? 'fixtures' : 'squad';
   try {
     const team = await resolveTeam(env, n);
     if (!team) return Response.json({ error: 'team-not-found', name: n.name, flag: n.flag }, { status: 404 });
-    const settle = (p) => p.then((v) => v, () => null);
-    const [squadJ, lastJ, nextJ] = await Promise.all([
-      settle(cached(`squad:${team.id}`, 6 * 3600, () => afGet(env, `/players/squads?team=${team.id}`))),
-      settle(cached(`last:${team.id}`, 1800, () => afGet(env, `/fixtures?team=${team.id}&last=5`))),
-      settle(cached(`next:${team.id}`, 3600, () => afGet(env, `/fixtures?team=${team.id}&next=5`))),
-    ]);
-    const players = squadJ?.response?.[0]?.players || [];
-    const groups = POS.map((pos) => ({ pos, players: players.filter((p) => p.position === pos).map((p) => ({ id: p.id, name: p.name, age: p.age ?? null, number: p.number ?? null, photo: okImg(p.photo, 'players') })) })).filter((g) => g.players.length);
+    if (part === 'fixtures') {
+      const settle = (fn) => fn().then((v) => ({ v }), (e) => ({ e: describe(e) }));
+      const last = await settle(() => cached(`last:${team.id}`, 1800, () => afGet(env, `/fixtures?team=${team.id}&last=5`)));
+      const next = await settle(() => cached(`next:${team.id}`, 3600, () => afGet(env, `/fixtures?team=${team.id}&next=5`)));
+      const rows = (x) => (x.v?.response || []).map(shapeFixture);
+      return Response.json({ last: rows(last).sort((a, b) => new Date(b.date) - new Date(a.date)), next: rows(next).sort((a, b) => new Date(a.date) - new Date(b.date)),
+        errors: { last: last.e || null, next: next.e || null }, checkedAt: new Date().toISOString() }, { headers: { 'Cache-Control': 'public, max-age=120' } });
+    }
+    let squadError = null, players = [], source = 'API-Football';
+    try {
+      const j = await cached(`squad:${team.id}`, 6 * 3600, () => afGet(env, `/players/squads?team=${team.id}`));
+      players = (j?.response?.[0]?.players || []).map((p) => ({ id: p.id, name: p.name, age: p.age ?? null, number: p.number ?? null, position: p.position, photo: okImg(p.photo, 'players') }));
+    } catch (e) { squadError = describe(e); }
+    if (!players.length) {
+      try { const alt = await espnSquad(n); if (alt) { players = alt; source = 'ESPN (World Cup squad, may be outdated)'; } } catch {}
+    }
     return Response.json({
       team: { id: team.id, name: n.name, apiName: team.name, flag: n.flag, conf: n.conf, logo: okImg(team.logo, 'teams'), founded: team.founded },
-      squad: groups, squadCount: players.length,
-      last: (lastJ?.response || []).map(shapeFixture).sort((a, b) => new Date(b.date) - new Date(a.date)),
-      next: (nextJ?.response || []).map(shapeFixture).sort((a, b) => new Date(a.date) - new Date(b.date)),
-      missing: { squad: !squadJ, last: !lastJ, next: !nextJ },
-      source: 'API-Football', checkedAt: new Date().toISOString(),
-    }, { headers: { 'Cache-Control': 'public, max-age=300' } });
-  } catch { return Response.json({ error: 'unavailable' }, { status: 502 }); }
+      squad: groupPlayers(players), squadCount: players.length, squadError, source, checkedAt: new Date().toISOString(),
+    }, { headers: { 'Cache-Control': 'public, max-age=120' } });
+  } catch (e) { return Response.json({ error: 'unavailable', ...describe(e) }, { status: 502 }); }
 }
