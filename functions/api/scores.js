@@ -25,16 +25,16 @@ const FEEDS = [
   // National teams
   ['Football', 'soccer/fifa.world', 'FIFA World Cup', 'World'],
   ['Football', 'soccer/fifa.friendly', 'International Friendlies', 'World'],
-  ['Football', 'soccer/fifa.worldq.afc', 'World Cup Qualifiers 路 Asia', 'AFC'],
-  ['Football', 'soccer/fifa.worldq.caf', 'World Cup Qualifiers 路 Africa', 'CAF'],
-  ['Football', 'soccer/fifa.worldq.concacaf', 'World Cup Qualifiers 路 CONCACAF', 'CONCACAF'],
-  ['Football', 'soccer/fifa.worldq.conmebol', 'World Cup Qualifiers 路 South America', 'CONMEBOL'],
-  ['Football', 'soccer/fifa.worldq.ofc', 'World Cup Qualifiers 路 Oceania', 'OFC'],
-  ['Football', 'soccer/fifa.worldq.uefa', 'World Cup Qualifiers 路 Europe', 'UEFA'],
+  ['Football', 'soccer/fifa.worldq.afc', 'World Cup Qualifiers \u00b7 Asia', 'AFC'],
+  ['Football', 'soccer/fifa.worldq.caf', 'World Cup Qualifiers \u00b7 Africa', 'CAF'],
+  ['Football', 'soccer/fifa.worldq.concacaf', 'World Cup Qualifiers \u00b7 CONCACAF', 'CONCACAF'],
+  ['Football', 'soccer/fifa.worldq.conmebol', 'World Cup Qualifiers \u00b7 South America', 'CONMEBOL'],
+  ['Football', 'soccer/fifa.worldq.ofc', 'World Cup Qualifiers \u00b7 Oceania', 'OFC'],
+  ['Football', 'soccer/fifa.worldq.uefa', 'World Cup Qualifiers \u00b7 Europe', 'UEFA'],
   ['Football', 'soccer/uefa.nations', 'UEFA Nations League', 'Europe'],
   ['Football', 'soccer/uefa.euro', 'UEFA European Championship', 'Europe'],
   ['Football', 'soccer/uefa.euroq', 'Euro Qualifiers', 'Europe'],
-  ['Football', 'soccer/conmebol.america', 'Copa Am茅rica', 'South America'],
+  ['Football', 'soccer/conmebol.america', 'Copa Am\u00e9rica', 'South America'],
   ['Football', 'soccer/concacaf.gold', 'CONCACAF Gold Cup', 'CONCACAF'],
   ['Football', 'soccer/concacaf.nations.league', 'CONCACAF Nations League', 'CONCACAF'],
   ['Football', 'soccer/caf.nations', 'Africa Cup of Nations', 'Africa'],
@@ -44,6 +44,18 @@ const FEEDS = [
   ['Baseball', 'baseball/mlb', 'MLB', 'USA & Canada'],
 ];
 
+const INTL = /^soccer\/(fifa\.|uefa\.(nations|euro)|conmebol\.america|concacaf\.|caf\.|afc\.)/;
+async function pool(items, size, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      try { out[i] = { status: 'fulfilled', value: await fn(items[i]) }; } catch (reason) { out[i] = { status: 'rejected', reason }; }
+    }
+  }));
+  return out;
+}
 async function getJson(url) {
   const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
   return { ok: response.ok, status: response.status, data: response.ok ? await response.json() : null };
@@ -75,7 +87,9 @@ export async function onRequestGet({ request }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date) {
     return Response.json({ error: 'Invalid date' }, { status: 400 });
   }
-  const results = await Promise.allSettled(FEEDS.map(async ([sport, path, name, region]) => {
+  const set = new URL(request.url).searchParams.get('set') === 'intl' ? 'intl' : 'main';
+  const feeds = FEEDS.filter((f) => INTL.test(f[1]) === (set === 'intl'));
+  const results = await pool(feeds, 6, async ([sport, path, name, region]) => {
     const events = await eventsForDhakaDay(path, date);
     if (events === null) return null;
     const matches = events.flatMap((event) => {
@@ -93,11 +107,11 @@ export async function onRequestGet({ request }) {
       const label = scheduled ? dhakaClock(event.date) : type.shortDetail || type.description || status.displayClock || 'Scheduled';
       return [[home.team?.displayName || home.athlete?.displayName || 'Home', away.team?.displayName || away.athlete?.displayName || 'Away', type.state === 'pre' ? null : home.score ?? null, type.state === 'pre' ? null : away.score ?? null, label, state, home.team?.abbreviation || 'H', away.team?.abbreviation || 'A', String(event.id), safeLogo(home.team?.logo), safeLogo(away.team?.logo), String(home.team?.id || ''), String(away.team?.id || ''), event.date]];
     });
-    return { name, region, sport, path, symbol: '鈼�', color: '', matches };
-  }));
+    return { name, region, sport, path, symbol: '\u25c9', color: '', matches };
+  });
   const groups = results.flatMap((result) => (result.status === 'fulfilled' && result.value ? [result.value] : []));
-  const unavailable = FEEDS.filter((_, i) => results[i].status === 'rejected').map((feed) => feed[2]);
-  if (!groups.length) return Response.json({ error: 'Sports feed temporarily unavailable' }, { status: 502 });
+  const unavailable = feeds.filter((_, i) => results[i].status === 'rejected').map((feed) => feed[2]);
+  if (!groups.length && unavailable.length) return Response.json({ error: 'Sports feed temporarily unavailable' }, { status: 502 });
   return Response.json({ date, groups, unavailable, updatedAt: new Date().toISOString(), source: 'ESPN' }, {
     headers: { 'Cache-Control': 'public, max-age=15, s-maxage=15' },
   });
