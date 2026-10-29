@@ -10,4 +10,4 @@ export async function onRequestGet({ request }) {
   const d=await r.json();
   return Response.json({articles:teamArticles(d.articles||[],id),checkedAt:new Date().toISOString(),source:'ESPN'},{headers:{'Cache-Control':'public, max-age=60, s-maxage=60'}});
  }catch{return Response.json({error:'Team news is temporarily unavailable.'},{status:502});}
-}
+ }
