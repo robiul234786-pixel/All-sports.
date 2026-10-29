@@ -3,7 +3,7 @@ function teamArticles(articles,id){
 }
 export async function onRequestGet({ request }) {
  const q=new URL(request.url).searchParams,id=q.get('id')||'',league=q.get('league')||'';
- if(!/^\d{1,12}$/.test(id)||!['soccer/uefa.champions','soccer/eng.1','soccer/esp.1','soccer/ger.1','soccer/ita.1','soccer/fra.1','soccer/usa.1','soccer/ksa.1','soccer/por.1','soccer/ned.1','soccer/bra.1','soccer/arg.1','basketball/nba','hockey/nhl','baseball/mlb'].includes(league))return Response.json({error:'Invalid team'},{status:400});
+ if(!/^\d{1,12}$/.test(id)||!['soccer/uefa.champions','soccer/eng.1','soccer/esp.1','soccer/ger.1','soccer/ita.1','soccer/fra.1','soccer/usa.1','soccer/ksa.1','soccer/por.1','soccer/ned.1','soccer/bra.1','soccer/arg.1','soccer/eng.2','soccer/eng.3','soccer/eng.fa','soccer/eng.league_cup','soccer/fifa.world','soccer/fifa.friendly','soccer/fifa.worldq.afc','soccer/fifa.worldq.caf','soccer/fifa.worldq.concacaf','soccer/fifa.worldq.conmebol','soccer/fifa.worldq.ofc','soccer/fifa.worldq.uefa','soccer/uefa.nations','soccer/uefa.euro','soccer/uefa.euroq','soccer/conmebol.america','soccer/concacaf.gold','soccer/concacaf.nations.league','soccer/caf.nations','soccer/afc.asian.cup','basketball/nba','hockey/nhl','baseball/mlb'].includes(league))return Response.json({error:'Invalid team'},{status:400});
  try{
   const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/${league}/news?team=${id}&limit=50`,{signal:AbortSignal.timeout(8000)});
   if(!r.ok)throw Error();
