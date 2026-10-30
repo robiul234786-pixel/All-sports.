@@ -248,3 +248,8 @@ html[data-theme="night"] .phl-chip{background:#1d5a45;color:#8ff0bd}
 .pstats>div{display:flex;justify-content:space-between;padding:12px 2px;border-bottom:1px solid var(--line);font-size:14px}
 .pstats>div b{font-weight:600}
 .phl p{color:var(--ink)}
+
+.fav-teams{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 6px}
+.fav-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 6px 6px 12px;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--ink);font-size:12px}
+.fav-chip button{border:0;background:transparent;color:var(--muted);font-size:16px;line-height:1;padding:0 6px;cursor:pointer}
+.fav-day{margin:18px 0 8px;font:700 13px Manrope,sans-serif;color:var(--ink)}
