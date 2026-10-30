@@ -1,0 +1,54 @@
+// Matches (recent + upcoming) of the teams a person follows. Source: ESPN team schedules.
+const NAMES = {
+  'soccer/uefa.champions': 'UEFA Champions League', 'soccer/eng.1': 'Premier League', 'soccer/eng.2': 'EFL Championship', 'soccer/eng.3': 'EFL League One',
+  'soccer/eng.fa': 'FA Cup', 'soccer/eng.league_cup': 'EFL Cup', 'soccer/esp.1': 'LaLiga', 'soccer/ger.1': 'Bundesliga', 'soccer/ita.1': 'Serie A',
+  'soccer/fra.1': 'Ligue 1', 'soccer/usa.1': 'MLS', 'soccer/ksa.1': 'Saudi Pro League', 'soccer/por.1': 'Liga Portugal', 'soccer/ned.1': 'Eredivisie',
+  'soccer/bra.1': 'Brazil Serie A', 'soccer/arg.1': 'Argentine Primera', 'basketball/nba': 'NBA', 'hockey/nhl': 'NHL', 'baseball/mlb': 'MLB',
+};
+const SPORT = (p) => (p.startsWith('soccer') ? 'Football' : p.startsWith('basketball') ? 'Basketball' : p.startsWith('hockey') ? 'Ice hockey' : 'Baseball');
+const DHAKA = 6 * 3600 * 1000;
+const dhakaClock = (iso) => new Date(new Date(iso).getTime() + DHAKA).toISOString().slice(11, 16);
+const safeLogo = (u) => (typeof u === 'string' && /^https:\/\/a\.espncdn\.com\//.test(u) ? u : '');
+const scoreOf = (v) => { const s = v && typeof v === 'object' ? (v.displayValue ?? v.value) : v; return s === undefined || s === null || s === '' ? null : String(s); };
+async function pool(items, size, fn) {
+  const out = new Array(items.length); let next = 0;
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, async () => {
+    while (next < items.length) { const i = next++; try { out[i] = { ok: true, value: await fn(items[i]) }; } catch { out[i] = { ok: false }; } }
+  }));
+  return out;
+}
+function shape(path, e) {
+  const comp = e.competitions?.[0];
+  const cs = comp?.competitors;
+  if (!e.id || !e.date || !cs || cs.length !== 2) return null;
+  const home = cs.find((c) => c.homeAway === 'home') || cs[0];
+  const away = cs.find((c) => c !== home);
+  const type = (comp.status || e.status)?.type || {};
+  const live = type.state === 'in' && !/postpon|suspend|delay|cancel/i.test(type.name || '');
+  const state = type.completed ? 'finished' : live ? 'live' : 'upcoming';
+  const label = type.name === 'STATUS_SCHEDULED' || type.state === 'pre' ? dhakaClock(e.date) : type.shortDetail || type.description || 'Scheduled';
+  const t = (c) => c.team || {};
+  const logo = (c) => safeLogo(t(c).logos?.[0]?.href || t(c).logo);
+  const hs = state === 'upcoming' ? null : scoreOf(home.score), as = state === 'upcoming' ? null : scoreOf(away.score);
+  return { path, league: NAMES[path] || path, region: '', sport: SPORT(path),
+    m: [t(home).displayName || 'Home', t(away).displayName || 'Away', hs, as, label, state, t(home).abbreviation || 'H', t(away).abbreviation || 'A', String(e.id), logo(home), logo(away), String(t(home).id || ''), String(t(away).id || ''), e.date] };
+}
+export async function onRequestGet({ request }) {
+  const raw = new URL(request.url).searchParams.get('teams') || '';
+  const pairs = raw.split(',').slice(0, 20).map((s) => s.split('|')).filter(([p, id]) => NAMES[p] && /^\d{1,12}$/.test(id || ''));
+  if (!pairs.length) return Response.json({ events: [], failed: 0 });
+  const results = await pool(pairs, 6, async ([path, id]) => {
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/teams/${id}/schedule`, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error('schedule');
+    const j = await r.json();
+    return (j.events || []).map((e) => shape(path, e)).filter(Boolean);
+  });
+  const now = Date.now(), seen = new Set(), events = [];
+  for (const r of results) for (const ev of r.ok ? r.value : []) {
+    const k = ev.path + ev.m[8], t = new Date(ev.m[13]).getTime();
+    if (seen.has(k) || !Number.isFinite(t) || t < now - 14 * 864e5 || t > now + 60 * 864e5) continue;
+    seen.add(k); events.push(ev);
+  }
+  events.sort((a, b) => new Date(a.m[13]) - new Date(b.m[13]));
+  return Response.json({ events, failed: results.filter((r) => !r.ok).length, checkedAt: new Date().toISOString() }, { headers: { 'Cache-Control': 'public, max-age=60' } });
+}
