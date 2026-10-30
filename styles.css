@@ -228,3 +228,23 @@ dialog img,dialog svg,dialog table{max-width:100%}
 
 .feed-status{font-size:11px;padding:8px 12px;line-height:1.5;gap:8px}
 .feed-status button{font-size:11px;padding:4px 9px}
+
+.pcard{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface);margin:6px 0 12px}
+.pcard-head{padding:22px 16px 10px;text-align:center;background:linear-gradient(180deg,#cfeedb,var(--surface))}
+html[data-theme="night"] .pcard-head{background:linear-gradient(180deg,#15405a,var(--surface))}
+.pcard-photo{position:relative;display:inline-block}
+.pcard-photo .player-portrait{width:88px;height:88px}
+.pcard-rating{top:-4px;right:-14px;font-size:13px}
+.pcard-crest.crest-img{position:absolute;inset:auto;right:-6px;bottom:-2px;width:28px;height:28px}
+.pcard-head h2{margin:10px 0 0;font:700 20px Manrope,sans-serif}
+.pcard-meta{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;padding:12px 8px;border-top:1px solid var(--line)}
+.pcard-meta b{display:block;font-size:14px}
+.pcard-meta small{color:var(--muted);font-size:11px}
+.phl{background:#e6f6ea;border-radius:14px;padding:14px 16px;margin:0 0 6px}
+html[data-theme="night"] .phl{background:#12382c}
+.phl-chip{display:inline-block;background:#c6ebd2;color:#0b6b3a;font-weight:700;font-size:12px;border-radius:14px;padding:5px 12px;margin-bottom:6px}
+html[data-theme="night"] .phl-chip{background:#1d5a45;color:#8ff0bd}
+.phl p{margin:6px 0 0;font-size:13px}
+.pstats>div{display:flex;justify-content:space-between;padding:12px 2px;border-bottom:1px solid var(--line);font-size:14px}
+.pstats>div b{font-weight:600}
+.phl p{color:var(--ink)}
