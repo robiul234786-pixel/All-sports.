@@ -6,6 +6,9 @@
 
 const API = "https://v3.football.api-sports.io";
 
+// গুরুত্বপূর্ণ টুর্নামেন্ট (ক্রম = অগ্রাধিকার, আগে মানে উপরে)
+const TOP = [1,4,9,6,7,5,960,32,34,29,30,31,33,2,3,848,39,140,135,78,61,45,143,48,88,71,307,13,17,531,15,10];
+
 async function af(path, env) {
   const r = await fetch(API + path, { headers: { "x-apisports-key": env.APIFOOTBALL_KEY } });
   return r.json();
@@ -37,69 +40,3 @@ function ttlForDate(date) {
 }
 
 export async function onRequest({ request, env }) {
-  const url = new URL(request.url);
-  const route = url.pathname.replace("/api/", "");
-
-  // ---------- MATCHES BY DATE ----------
-  if (route === "matches") {
-    const date =
-      url.searchParams.get("date") ||
-      new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
-    return cached(request, ttlForDate(date), async () => {
-      const j = await af(`/fixtures?date=${date}&timezone=Asia/Dhaka`, env);
-      const list = (j.response || []).map((m) => ({
-        id: m.fixture.id,
-        time: m.fixture.date,            // already Dhaka time (+06:00)
-        status: m.fixture.status.short,  // NS, 1H, HT, 2H, FT ...
-        minute: m.fixture.status.elapsed,
-        league: { id: m.league.id, name: m.league.name, country: m.league.country, logo: m.league.logo },
-        home: { id: m.teams.home.id, name: m.teams.home.name, logo: m.teams.home.logo, goals: m.goals.home },
-        away: { id: m.teams.away.id, name: m.teams.away.name, logo: m.teams.away.logo, goals: m.goals.away },
-        // national team games: league name has "World Cup", "Nations League", "Friendlies", "Euro", "Qualif" etc.
-        national: /world cup|nations league|friendl|euro|copa america|africa cup|asian cup|qualif/i.test(m.league.name) &&
-                  !/club|u\d\d|women/i.test(m.league.name),
-      }));
-      return { date, count: list.length, matches: list };
-    });
-  }
-
-  // ---------- LINEUP (official or probable) ----------
-  if (route === "lineup") {
-    const id = url.searchParams.get("fixture");
-    if (!id) return new Response("fixture required", { status: 400 });
-    return cached(request, 900, async () => {
-      // 1) official lineup (usually appears ~1 hour before kickoff)
-      const off = await af(`/fixtures/lineups?fixture=${id}`, env);
-      if (off.response && off.response.length) {
-        return { type: "official", teams: off.response.map(fmt) };
-      }
-      // 2) probable XI = lineup of each team's previous match
-      const fx = await af(`/fixtures?id=${id}&timezone=Asia/Dhaka`, env);
-      const f = fx.response && fx.response[0];
-      if (!f) return { type: "none", teams: [] };
-      const out = [];
-      for (const t of [f.teams.home, f.teams.away]) {
-        const last = await af(`/fixtures?team=${t.id}&last=1`, env);
-        const lf = last.response && last.response[0];
-        if (!lf) continue;
-        const lu = await af(`/fixtures/lineups?fixture=${lf.fixture.id}`, env);
-        const mine = (lu.response || []).find((x) => x.team.id === t.id);
-        if (mine) out.push(fmt(mine));
-      }
-      return { type: "probable", note: "শেষ ম্যাচের লাইনআপের ভিত্তিতে সম্ভাব্য একাদশ", teams: out };
-    });
-  }
-
-  return new Response("Not found", { status: 404 });
-}
-
-function fmt(x) {
-  return {
-    team: x.team.name,
-    logo: x.team.logo,
-    formation: x.formation,
-    coach: x.coach && x.coach.name,
-    xi: (x.startXI || []).map((p) => ({ n: p.player.number, name: p.player.name, pos: p.player.pos })),
-    bench: (x.substitutes || []).map((p) => ({ n: p.player.number, name: p.player.name })),
-  };
-}
