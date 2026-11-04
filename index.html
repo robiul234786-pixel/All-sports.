@@ -13,59 +13,7 @@
 <main><section class="welcome"><div><div class="eyebrow">THE WORLD OF SPORT, IN ONE PLACE</div><h1>Your daily dose of sport<span>.</span></h1><p>Follow the action. Understand the game. Find your passion.</p></div><span class="today-label"><span data-icon="calendar"></span> <span id="today-text">Today</span></span></section>
 <section class="hero"><img src="https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1400&q=85" alt="A packed football stadium under the floodlights"><div class="hero-shade"></div><div class="hero-content"><span class="hero-kicker"><i></i> THE BEAUTIFUL GAME</span><h2>Big moments.<br>Bigger rivalries.</h2><p>Get closer to the games that bring us together.</p><button id="hero-button">Explore football <span>&#x2197;</span></button></div><div class="hero-caption"><span data-icon="globe"></span> One world. A thousand games.</div><div class="hero-dots"><b></b><i></i><i></i></div></section>
 
-<!-- ===== তারিখ অনুযায়ী ম্যাচ + লাইনআপ (নতুন) ===== -->
-<section id="fx-box" style="margin:16px 0">
-  <h3 style="margin:0 0 8px">ম্যাচ (তারিখ অনুযায়ী)</h3>
-  <div id="fx-days" style="display:flex;gap:8px;overflow-x:auto;padding:6px 0"></div>
-  <div id="fx-list"></div>
-</div>
-<script>
-(function(){
-  var dhaka=function(d){return new Date(d.getTime()+6*3600e3).toISOString().slice(0,10)};
-  var cur=dhaka(new Date());
-  var days=document.getElementById("fx-days"),list=document.getElementById("fx-list");
-  function buildDays(){
-    days.innerHTML="";
-    for(var i=-3;i<=10;i++){
-      (function(i){
-        var d=dhaka(new Date(Date.now()+i*864e5));
-        var b=document.createElement("button");
-        b.textContent=i===0?"আজ":d.slice(5);
-        b.style.cssText="padding:8px 12px;border-radius:16px;border:0;white-space:nowrap;cursor:pointer;"+(d===cur?"background:#6c6cff;color:#fff":"background:rgba(128,128,128,.25);color:inherit");
-        b.onclick=function(){cur=d;buildDays();load()};
-        days.appendChild(b);
-      })(i);
-    }
-  }
-  function load(){
-    list.textContent="লোড হচ্ছে...";
-    fetch("/api/matches?date="+cur).then(function(r){return r.json()}).then(function(r){
-      var g={};
-      r.matches.forEach(function(m){(g[m.league.name]=g[m.league.name]||[]).push(m)});
-      var names=Object.keys(g);
-      list.innerHTML=names.map(function(n){
-        return '<h4 style="margin:14px 0 6px">'+n+'</h4>'+g[n].map(function(m){
-          var t=new Date(m.time).toLocaleTimeString("bn-BD",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Dhaka"});
-          var sc=m.status==="NS"?t:((m.home.goals==null?0:m.home.goals)+" - "+(m.away.goals==null?0:m.away.goals));
-          return '<div onclick="fxLineup('+m.id+')" style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:rgba(128,128,128,.15);border-radius:10px;margin:4px 0;cursor:pointer"><span style="flex:1">'+m.home.name+'</span><b style="padding:0 8px">'+sc+'</b><span style="flex:1;text-align:right">'+m.away.name+'</span></div>';
-        }).join("");
-      }).join("")||"এই তারিখে কোনো ম্যাচ নেই";
-    }).catch(function(){list.textContent="ম্যাচ লোড করা যায়নি"});
-  }
-  window.fxLineup=function(id){
-    var dlg=document.getElementById("detail"),box=document.getElementById("dialog-content");
-    box.innerHTML="<p>লোড হচ্ছে...</p>";
-    if(!dlg.open)dlg.showModal();
-    fetch("/api/lineup?fixture="+id).then(function(r){return r.json()}).then(function(r){
-      var head=r.type==="official"?"অফিসিয়াল লাইনআপ":r.type==="probable"?r.note:"";
-      if(!r.teams||!r.teams.length){box.innerHTML="<h3>লাইনআপ</h3><p>লাইনআপ এখনো পাওয়া যায়নি। ম্যাচের ১ ঘণ্টা আগে আসে।</p>";return}
-      box.innerHTML="<h3>"+head+"</h3>"+r.teams.map(function(t){return "<h4>"+t.team+(t.formation?" ("+t.formation+")":"")+"</h4>"+t.xi.map(function(p){return "<div>"+p.n+" "+p.name+" <small>"+p.pos+"</small></div>"}).join("")}).join("");
-    }).catch(function(){box.innerHTML="<p>লোড করা যায়নি</p>"});
-  };
-  buildDays();load();
-})();
-</script>
-<!-- ===== শেষ ===== -->
+
 
 <div id="page-content"></div>
 </main>
