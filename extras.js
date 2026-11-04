@@ -40,29 +40,3 @@
   render=function(){inject();_render();loadNat(feedDate)};
 
   function afLineup(id){
-    var dlg=document.getElementById('detail');
-    if(typeof center!=='undefined')center=null;
-    dlg.classList.remove('match-dialog');
-    var x=null;Object.keys(nat).forEach(function(k){(nat[k]||[]).forEach(function(y){if(String(y.id)===String(id))x=y})});
-    var head=x?'<div class="eyebrow">'+esc(x.league.name)+'</div><h2>'+esc(x.home.name)+' vs '+esc(x.away.name)+'</h2><p class="coverage-note">'+esc(bdFull(x.time))+'</p>':'';
-    show(head+'<div class="detail-loading" role="status">\u09b2\u09be\u0987\u09a8\u0986\u09aa \u09b2\u09cb\u09a1 \u09b9\u099a\u09cd\u099b\u09c7\u2026</div>');
-    fetch('/api/lineup?fixture='+id).then(function(r){return r.json()}).then(function(r){
-      var box=document.getElementById('dialog-content');
-      if(!r.teams||!r.teams.length){box.innerHTML=head+'<div class="detail-empty">\u09b2\u09be\u0987\u09a8\u0986\u09aa \u098f\u0996\u09a8\u09cb \u09aa\u09be\u0993\u09af\u09bc\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf\u0964 \u09ae\u09cd\u09af\u09be\u099a\u09c7\u09b0 \u0995\u09be\u099b\u09be\u0995\u09be\u099b\u09bf \u09b8\u09ae\u09af\u09bc\u09c7 \u0986\u09b8\u09ac\u09c7\u0964</div>';return}
-      var title=r.type==='official'?'\u0985\u09ab\u09bf\u09b8\u09bf\u09af\u09bc\u09be\u09b2 \u09b2\u09be\u0987\u09a8\u0986\u09aa':'\u09b8\u09ae\u09cd\u09ad\u09be\u09ac\u09cd\u09af \u09b2\u09be\u0987\u09a8\u0986\u09aa';
-      var html=head+'<h3>'+title+'</h3>'+(r.type==='probable'?'<p class="coverage-note">'+esc(r.note)+'</p>':'');
-      r.teams.forEach(function(t){
-        html+='<h4>'+esc(t.team)+(t.formation?' ('+esc(t.formation)+')':'')+'</h4>'+t.xi.map(function(p){return '<div class="squad-row"><span class="shirt-number">'+(p.n==null?'\u2014':esc(p.n))+'</span><b>'+esc(p.name)+'</b><small>'+esc(p.pos||'')+'</small></div>'}).join('');
-      });
-      box.innerHTML=html;
-    }).catch(function(){document.getElementById('dialog-content').innerHTML=head+'<div class="detail-error">\u09b2\u09be\u0987\u09a8\u0986\u09aa \u09b2\u09cb\u09a1 \u0995\u09b0\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf\u0964</div>'});
-  }
-  document.addEventListener('click',function(e){
-    var r=e.target.closest('[data-match]');
-    if(r&&r.dataset.match.indexOf('af:')===0&&!e.target.closest('[data-save]')){e.stopImmediatePropagation();afLineup(r.dataset.match.slice(3))}
-  },true);
-  document.addEventListener('keydown',function(e){
-    if(e.key==='Enter'&&e.target.matches&&e.target.matches('[data-match]')&&e.target.dataset.match.indexOf('af:')===0){e.stopImmediatePropagation();afLineup(e.target.dataset.match.slice(3))}
-  },true);
-  render();
-})();
