@@ -19,12 +19,11 @@
   <div id="fx-days" style="display:flex;gap:8px;overflow-x:auto;padding:6px 0"></div>
   <div id="fx-list"></div>
 </div>
-<div id="fx-lu" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);color:#fff;overflow:auto;padding:16px;z-index:9999"></div>
 <script>
 (function(){
   var dhaka=function(d){return new Date(d.getTime()+6*3600e3).toISOString().slice(0,10)};
   var cur=dhaka(new Date());
-  var days=document.getElementById("fx-days"),list=document.getElementById("fx-list"),lu=document.getElementById("fx-lu");
+  var days=document.getElementById("fx-days"),list=document.getElementById("fx-list");
   function buildDays(){
     days.innerHTML="";
     for(var i=-3;i<=10;i++){
@@ -43,7 +42,7 @@
     fetch("/api/matches?date="+cur).then(function(r){return r.json()}).then(function(r){
       var g={};
       r.matches.forEach(function(m){(g[m.league.name]=g[m.league.name]||[]).push(m)});
-      var names=Object.keys(g).sort(function(a,b){return (g[b][0].national?1:0)-(g[a][0].national?1:0)});
+      var names=Object.keys(g);
       list.innerHTML=names.map(function(n){
         return '<h4 style="margin:14px 0 6px">'+n+'</h4>'+g[n].map(function(m){
           var t=new Date(m.time).toLocaleTimeString("bn-BD",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Dhaka"});
@@ -54,12 +53,14 @@
     }).catch(function(){list.textContent="ম্যাচ লোড করা যায়নি"});
   }
   window.fxLineup=function(id){
-    lu.style.display="block";lu.textContent="লোড হচ্ছে...";
+    var dlg=document.getElementById("detail"),box=document.getElementById("dialog-content");
+    box.innerHTML="<p>লোড হচ্ছে...</p>";
+    if(!dlg.open)dlg.showModal();
     fetch("/api/lineup?fixture="+id).then(function(r){return r.json()}).then(function(r){
-      var head=r.type==="official"?"অফিসিয়াল লাইনআপ":r.type==="probable"?r.note:"লাইনআপ এখনো নেই";
-      lu.innerHTML='<button onclick="document.getElementById(\'fx-lu\').style.display=\'none\'" style="float:right;font-size:20px">✕</button><h3>'+head+'</h3>'+
-        r.teams.map(function(t){return '<h4>'+t.team+(t.formation?' ('+t.formation+')':'')+'</h4>'+t.xi.map(function(p){return '<div>'+p.n+' '+p.name+' <small>'+p.pos+'</small></div>'}).join("")}).join("");
-    }).catch(function(){lu.textContent="লোড করা যায়নি"});
+      var head=r.type==="official"?"অফিসিয়াল লাইনআপ":r.type==="probable"?r.note:"";
+      if(!r.teams||!r.teams.length){box.innerHTML="<h3>লাইনআপ</h3><p>লাইনআপ এখনো পাওয়া যায়নি। ম্যাচের ১ ঘণ্টা আগে আসে।</p>";return}
+      box.innerHTML="<h3>"+head+"</h3>"+r.teams.map(function(t){return "<h4>"+t.team+(t.formation?" ("+t.formation+")":"")+"</h4>"+t.xi.map(function(p){return "<div>"+p.n+" "+p.name+" <small>"+p.pos+"</small></div>"}).join("")}).join("");
+    }).catch(function(){box.innerHTML="<p>লোড করা যায়নি</p>"});
   };
   buildDays();load();
 })();
