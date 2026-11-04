@@ -7,6 +7,7 @@
 const API = "https://v3.football.api-sports.io";
 
 // গুরুত্বপূর্ণ টুর্নামেন্ট (ক্রম = অগ্রাধিকার, আগে মানে উপরে)
+const NAT = [1,4,5,6,7,9,10,22,29,30,31,32,33,34,960]; // জাতীয় দলের টুর্নামেন্ট
 const TOP = [1,4,9,6,7,5,960,32,34,29,30,31,33,2,3,848,39,140,135,78,61,45,143,48,88,71,307,13,17,531,15,10];
 
 async function af(path, env) {
@@ -38,5 +39,3 @@ function ttlForDate(date) {
   if (date < today) return 6 * 3600;   // past: rarely changes
   return 1800;                         // future: 30 min
 }
-
-export async function onRequest({ request, env }) {
