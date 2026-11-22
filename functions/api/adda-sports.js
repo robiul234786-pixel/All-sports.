@@ -31,6 +31,7 @@ export async function onRequest({ request, env, waitUntil }) {
         status: f.fixture.status.short,
         min: f.fixture.status.elapsed,
         league: f.league.name,
+        lLogo: f.league.logo,
         country: f.league.country,
         home: f.teams.home.name,
         away: f.teams.away.name,
