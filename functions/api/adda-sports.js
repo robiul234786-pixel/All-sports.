@@ -16,6 +16,8 @@ export async function onRequest({ request, env, waitUntil }) {
   const cache = caches.default;
   const hit = await cache.match(request);
   if (hit) return hit;
+  const lgKey = new Request(request.url + (request.url.includes('?') ? '&' : '?') + '__lg=1');
+  const stale = async err => (await cache.match(lgKey)) || new Response(JSON.stringify({ error: err }), { headers: H });
 
   const q = new URL(request.url).searchParams;
   const type = q.get('type') || 'matches';
@@ -26,7 +28,7 @@ export async function onRequest({ request, env, waitUntil }) {
       const d = q.get('date') || new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
       const j = await af(`fixtures?date=${d}&timezone=Asia/Dhaka`, env);
       ttl = 600;
-      if (j.errors && Object.keys(j.errors).length) return new Response(JSON.stringify({ error: j.errors }), { headers: H });
+      if (j.errors && Object.keys(j.errors).length) return stale(j.errors);
       data = (j.response || []).map(f => ({
         id: f.fixture.id,
         time: f.fixture.date,
@@ -45,7 +47,7 @@ export async function onRequest({ request, env, waitUntil }) {
     } else if (type === 'events') {
       ttl = q.get('f') ? 21600 : 120;
       const j = await af(`fixtures/events?fixture=${encodeURIComponent(q.get('id'))}`, env);
-      if (j.errors && Object.keys(j.errors).length) return new Response(JSON.stringify({ error: j.errors }), { headers: H });
+      if (j.errors && Object.keys(j.errors).length) return stale(j.errors);
       data = (j.response || []).map(e => ({
         min: e.time.elapsed,
         extra: e.time.extra,
@@ -58,7 +60,7 @@ export async function onRequest({ request, env, waitUntil }) {
     } else if (type === 'detail') {
       ttl = q.get('f') ? 21600 : 120;
       const j = await af(`fixtures?id=${encodeURIComponent(q.get('id'))}`, env);
-      if (j.errors && Object.keys(j.errors).length) return new Response(JSON.stringify({ error: j.errors }), { headers: H });
+      if (j.errors && Object.keys(j.errors).length) return stale(j.errors);
       const f = (j.response || [])[0] || {};
       const fx = f.fixture || {};
       data = {
@@ -96,12 +98,13 @@ export async function onRequest({ request, env, waitUntil }) {
       data = { error: 'unknown type' };
     }
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 502, headers: H });
+    return stale(String(e));
   }
 
   const res = new Response(JSON.stringify(data), {
     headers: { ...H, 'Cache-Control': `public, max-age=${ttl}` }
   });
   waitUntil(cache.put(request, res.clone()));
+  waitUntil(cache.put(lgKey, new Response(JSON.stringify(data), { headers: { ...H, 'Cache-Control': 'public, max-age=86400' } })));
   return res;
 }
