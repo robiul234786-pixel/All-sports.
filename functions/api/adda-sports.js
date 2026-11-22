@@ -25,6 +25,8 @@ export async function onRequest({ request, env, waitUntil }) {
     if (type === 'matches') {
       const d = q.get('date') || new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
       const j = await af(`fixtures?date=${d}&timezone=Asia/Dhaka`, env);
+      ttl = 300;
+      if (j.errors && Object.keys(j.errors).length) return new Response(JSON.stringify({ error: j.errors }), { headers: H });
       data = (j.response || []).map(f => ({
         id: f.fixture.id,
         time: f.fixture.date,
@@ -41,8 +43,9 @@ export async function onRequest({ request, env, waitUntil }) {
         ag: f.goals.away
       }));
     } else if (type === 'events') {
-      ttl = 30;
+      ttl = 120;
       const j = await af(`fixtures/events?fixture=${encodeURIComponent(q.get('id'))}`, env);
+      if (j.errors && Object.keys(j.errors).length) return new Response(JSON.stringify({ error: j.errors }), { headers: H });
       data = (j.response || []).map(e => ({
         min: e.time.elapsed,
         extra: e.time.extra,
