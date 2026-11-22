@@ -78,10 +78,17 @@ export async function onRequest({ request, env, waitUntil }) {
           team: s.team.name,
           s: Object.fromEntries((s.statistics || []).map(x => [x.type, x.value]))
         })),
-        lineups: (f.lineups || []).map(l => ({
-          team: l.team.name, formation: l.formation, coach: l.coach && l.coach.name,
-          xi: (l.startXI || []).map(p => p.player.name)
-        }))
+        lineups: (f.lineups || []).map(l => {
+          const rt = {};
+          (f.players || []).filter(g => g.team.id === l.team.id).forEach(g => (g.players || []).forEach(p => {
+            const r = p.statistics && p.statistics[0] && p.statistics[0].games && p.statistics[0].games.rating;
+            if (r) rt[p.player.id] = parseFloat(r);
+          }));
+          return {
+            team: l.team.name, formation: l.formation, coach: l.coach && l.coach.name,
+            xi: (l.startXI || []).map(p => ({ n: p.player.name, num: p.player.number, pos: p.player.pos, grid: p.player.grid, r: rt[p.player.id] || null }))
+          };
+        })
       };
     } else if (type === 'news') {
       ttl = 600;
