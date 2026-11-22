@@ -253,3 +253,201 @@ html[data-theme="night"] .phl-chip{background:#1d5a45;color:#8ff0bd}
 .fav-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 6px 6px 12px;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--ink);font-size:12px}
 .fav-chip button{border:0;background:transparent;color:var(--muted);font-size:16px;line-height:1;padding:0 6px;cursor:pointer}
 .fav-day{margin:18px 0 8px;font:700 13px Manrope,sans-serif;color:var(--ink)}
+
+
+/* =========================================================
+   ALL SPORTS — Mint & Emerald UI refresh
+   Presentation-only overrides; existing app logic is untouched.
+   ========================================================= */
+:root{
+ --ink:#172b22;--green:#07883f;--muted:#718078;--line:#e2eee6;
+ --lime:#bdf5c9;--bg:#f1faf4;--surface:#ffffff;--accent:#07883f;
+}
+html[data-theme="light"] body{
+ background:linear-gradient(135deg,#f4fbf6 0%,#edf8f0 48%,#f8fcf9 100%);
+ color:var(--ink);
+}
+html[data-theme="light"] .topbar{
+ min-height:76px;background:rgba(255,255,255,.92);border-bottom:1px solid #e1eee5;
+ box-shadow:0 4px 18px rgba(26,91,53,.045);backdrop-filter:blur(16px);
+}
+html[data-theme="light"] .brand{font-size:27px;color:#173d29;letter-spacing:-1.2px}
+html[data-theme="light"] .brand-mark{
+ background:linear-gradient(145deg,#0a9d4c,#75d78d);color:white;border-radius:11px;
+ box-shadow:0 5px 12px #07883f2a;
+}
+html[data-theme="light"] .mainnav button.active{color:#07883f}
+html[data-theme="light"] .mainnav button.active:after{height:3px;border-radius:4px;background:#18a653}
+html[data-theme="light"] .search{
+ background:#f3faf5;border:1px solid #e4f0e7;border-radius:14px;padding:11px 14px;
+}
+html[data-theme="light"] .sportbar{
+ background:rgba(255,255,255,.9);border-color:#e4efe7;min-height:72px;
+}
+html[data-theme="light"] .sport-tab{border-radius:22px;padding:11px 17px;font-weight:600}
+html[data-theme="light"] .sport-tab.active{
+ color:#087a3c;background:#dcf8e4;box-shadow:inset 0 0 0 1px #c7efd2;
+}
+html[data-theme="light"] .layout{
+ max-width:1540px;grid-template-columns:218px minmax(400px,1fr) 292px;
+ gap:24px;padding:28px 32px 48px;
+}
+html[data-theme="light"] .sidebar{padding:8px 8px 0 0}
+html[data-theme="light"] .side-item{border-radius:12px;padding:12px 13px}
+html[data-theme="light"] .side-item.selected{background:#e0f6e7;color:#087b3d}
+html[data-theme="light"] .sidebar-promo{
+ background:linear-gradient(145deg,#e4f8e9,#f5fcf6);border:1px solid #d5efdc;
+ border-radius:16px;padding:18px;
+}
+html[data-theme="light"] .welcome{margin-bottom:20px}
+html[data-theme="light"] .eyebrow{color:#16824a}
+html[data-theme="light"] h1{font-size:30px;color:#183729}
+html[data-theme="light"] h1 span{color:#12a34f}
+html[data-theme="light"] .welcome p{color:#718379}
+html[data-theme="light"] .hero{
+ height:260px;border-radius:20px;box-shadow:0 14px 35px rgba(17,83,43,.13);
+}
+html[data-theme="light"] .hero-shade{
+ background:linear-gradient(90deg,rgba(5,42,28,.88),rgba(5,42,28,.38) 62%,rgba(5,42,28,.05));
+}
+html[data-theme="light"] .hero button{
+ background:linear-gradient(135deg,#bff5c9,#8be9a3);color:#07542b;border-radius:22px;
+ padding:11px 17px;box-shadow:0 5px 16px #061d102c;
+}
+html[data-theme="light"] .section-header h2{font-size:19px;color:#173a28}
+html[data-theme="light"] .date-strip{
+ border-radius:16px 16px 0 0;background:#fff;border-color:#e4efe7;
+}
+html[data-theme="light"] .date-strip button{border-radius:11px}
+html[data-theme="light"] .date-strip button.active{
+ background:#dcf8e4;color:#087b3d;
+}
+html[data-theme="light"] .filters button{
+ border-radius:20px;background:#fff;border-color:#e2eee5;padding:8px 13px;
+}
+html[data-theme="light"] .filters button.active{
+ background:#0b9148;color:#fff;border-color:#0b9148;
+}
+html[data-theme="light"] .match-group{
+ border:1px solid #e1eee5;border-radius:15px;box-shadow:0 5px 18px rgba(21,78,45,.045);
+}
+html[data-theme="light"] .group-heading{
+ background:#f4fbf6;border-color:#eaf2ec;padding:13px 16px;
+}
+html[data-theme="light"] .match-row{padding:13px 16px;min-height:76px;border-color:#edf3ef}
+html[data-theme="light"] .match-row:hover{background:#f5fcf7}
+html[data-theme="light"] .team-line{font-size:11px}
+html[data-theme="light"] .team-line b{font-size:12px}
+html[data-theme="light"] .team-line .winning{color:#07883f}
+html[data-theme="light"] .badge{background:#e8f5ec;color:#277347}
+html[data-theme="light"] .panel{
+ border:1px solid #e2eee6;border-radius:17px;box-shadow:0 6px 20px rgba(20,83,44,.045);
+}
+html[data-theme="light"] .featured-score strong{color:#183a29}
+html[data-theme="light"] .possession-bar{background:#e5eee7}
+html[data-theme="light"] .possession-bar i{background:#17a451}
+html[data-theme="light"] .sport-card{
+ border:1px solid #e0eee4;border-radius:17px;box-shadow:0 7px 20px rgba(20,83,44,.045);
+ transition:transform .18s ease,box-shadow .18s ease;
+}
+html[data-theme="light"] .sport-card:hover{transform:translateY(-3px);box-shadow:0 12px 24px rgba(20,83,44,.09)}
+html[data-theme="light"] .trending-icon{background:#f0faf3;border-color:#e1f0e5}
+html[data-theme="light"] .subtle-button{
+ background:#eff9f1;border-color:#e1f0e4;border-radius:10px;color:#087b3d;
+}
+html[data-theme="light"] dialog{
+ border:1px solid #dcece1;border-radius:20px;box-shadow:0 30px 100px rgba(13,67,37,.22);
+}
+html[data-theme="light"] .detail-stats{background:#eaf7ed;border-radius:14px}
+html[data-theme="light"] #toast{background:#087b3d;color:#fff;border-radius:14px}
+html[data-theme="light"] .feed-status{background:#eaf8ee;border-color:#d7efde;color:#28633e;border-radius:12px}
+html[data-theme="light"] .nation-card,html[data-theme="light"] .player-result{
+ border-radius:13px;border-color:#e1eee5;
+}
+html[data-theme="light"] .nations-chips button{border-radius:20px}
+html[data-theme="light"] .nations-chips button.active{background:#0b9148;border-color:#0b9148;color:white}
+
+/* Soft green match-detail components */
+html[data-theme="light"] .stat-grid>div,
+html[data-theme="light"] .lineup-player,
+html[data-theme="light"] .event-item,
+html[data-theme="light"] .squad-row,
+html[data-theme="light"] .profile-facts span,
+html[data-theme="light"] .detail-empty{
+ background:#f5fbf6;border-color:#e1eee5;border-radius:12px;
+}
+html[data-theme="light"] .player-portrait{background:#e6f6eb;color:#187743}
+html[data-theme="light"] .rating,html[data-theme="light"] .pitch-avg{background:#e4f7e9;color:#087b3d}
+html[data-theme="light"] .follow-team.following{background:#e4f8e9;border-color:#8edba5;color:#087b3d}
+
+/* Mobile-first compact app shell and bottom navigation */
+@media(max-width:720px){
+ html[data-theme="light"] body{background:#f2faf4}
+ html[data-theme="light"] .topbar{
+  position:relative;min-height:66px;padding:12px 15px 0;gap:10px;
+  border-radius:0 0 18px 18px;
+ }
+ html[data-theme="light"] .brand{font-size:24px}
+ html[data-theme="light"] .mainnav{
+  position:fixed;z-index:50;left:12px;right:12px;bottom:10px;
+  width:auto;height:62px;order:5;display:flex;flex-wrap:nowrap;justify-content:space-around;
+  align-items:center;gap:0;padding:5px 7px calc(5px + env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.94);border:1px solid #dcece1;border-radius:20px;
+  box-shadow:0 8px 30px rgba(14,67,37,.16);backdrop-filter:blur(18px);
+ }
+ html[data-theme="light"] .mainnav button{
+  flex:1;height:48px;display:flex;align-items:center;justify-content:center;
+  text-align:center;font-size:10px;padding:5px 2px;color:#718078;border-radius:13px;
+ }
+ html[data-theme="light"] .mainnav button.active{
+  color:#087b3d;background:#e5f8e9;font-weight:800;
+ }
+ html[data-theme="light"] .mainnav button.active:after{display:none}
+ html[data-theme="light"] .mainnav button .new{display:none}
+ html[data-theme="light"] .sportbar{
+  min-height:60px;display:flex;flex-wrap:nowrap;justify-content:flex-start;
+  overflow-x:auto;white-space:nowrap;padding:9px 12px;gap:7px;
+ }
+ html[data-theme="light"] .sport-tab{flex:0 0 auto;padding:9px 13px;font-size:10px}
+ html[data-theme="light"] .layout{display:block;padding:19px 13px 105px}
+ html[data-theme="light"] .sidebar{display:none}
+ html[data-theme="light"] .welcome{align-items:flex-start;margin:2px 2px 16px}
+ html[data-theme="light"] h1{font-size:24px;line-height:1.2}
+ html[data-theme="light"] .welcome p{font-size:10px;line-height:1.6;max-width:245px}
+ html[data-theme="light"] .hero{height:205px;border-radius:17px;margin-bottom:20px}
+ html[data-theme="light"] .hero-content{top:20px;left:18px}
+ html[data-theme="light"] .hero h2{font-size:27px}
+ html[data-theme="light"] .hero p{max-width:210px;line-height:1.5}
+ html[data-theme="light"] .hero-caption{display:none}
+ html[data-theme="light"] .section-header{margin-bottom:11px}
+ html[data-theme="light"] .section-header h2{font-size:17px}
+ html[data-theme="light"] .date-strip{overflow-x:auto;gap:2px;padding:7px 4px}
+ html[data-theme="light"] .date-strip button{flex:1;min-width:0;padding:8px 5px;font-size:9px}
+ html[data-theme="light"] .filters{overflow-x:auto;flex-wrap:nowrap;padding:9px 0}
+ html[data-theme="light"] .filters button{white-space:nowrap}
+ html[data-theme="light"] .match-group{border-radius:13px;margin-bottom:11px}
+ html[data-theme="light"] .group-heading{padding:11px 12px}
+ html[data-theme="light"] .match-row{grid-template-columns:35px minmax(0,1fr) 25px;gap:7px;padding:10px 11px;min-height:70px}
+ html[data-theme="light"] .team-line{font-size:10px;gap:7px;margin-bottom:6px}
+ html[data-theme="light"] .team-line b{font-size:11px}
+ html[data-theme="light"] .match-time{font-size:8px}
+ html[data-theme="light"] .rightbar{display:block;margin:18px 0 0}
+ html[data-theme="light"] .rightbar .featured,html[data-theme="light"] .rightbar .trending,html[data-theme="light"] .data-note{display:none}
+ html[data-theme="light"] .learn-card{display:grid;grid-template-columns:1fr 1fr;gap:8px 13px}
+ html[data-theme="light"] .learn-card .panel-heading{grid-column:1/-1}
+ html[data-theme="light"] .learn-image{grid-row:2/5;margin:4px 0;height:130px}
+ html[data-theme="light"] .learn-card>h3{font-size:13px;margin-top:4px}
+ html[data-theme="light"] .learn-card p{font-size:9px;margin:0}
+ html[data-theme="light"] .learn-card>button{text-align:left}
+ html[data-theme="light"] .sport-grid{gap:9px}
+ html[data-theme="light"] .sport-card{min-height:125px;padding:15px}
+ html[data-theme="light"] .sport-card h3{font-size:14px}
+ html[data-theme="light"] dialog{padding:27px 18px}
+ html[data-theme="light"] .feed-status{align-items:flex-start}
+}
+@media(max-width:390px){
+ html[data-theme="light"] .top-actions{gap:7px}
+ html[data-theme="light"] .search input{width:90px}
+ html[data-theme="light"] .hero h2{font-size:24px}
+ html[data-theme="light"] .mainnav button{font-size:9px}
+}
