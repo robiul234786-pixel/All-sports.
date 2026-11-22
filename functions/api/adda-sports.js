@@ -25,7 +25,7 @@ export async function onRequest({ request, env, waitUntil }) {
     if (type === 'matches') {
       const d = q.get('date') || new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
       const j = await af(`fixtures?date=${d}&timezone=Asia/Dhaka`, env);
-      ttl = 300;
+      ttl = 600;
       if (j.errors && Object.keys(j.errors).length) return new Response(JSON.stringify({ error: j.errors }), { headers: H });
       data = (j.response || []).map(f => ({
         id: f.fixture.id,
@@ -43,7 +43,7 @@ export async function onRequest({ request, env, waitUntil }) {
         ag: f.goals.away
       }));
     } else if (type === 'events') {
-      ttl = 120;
+      ttl = q.get('f') ? 21600 : 120;
       const j = await af(`fixtures/events?fixture=${encodeURIComponent(q.get('id'))}`, env);
       if (j.errors && Object.keys(j.errors).length) return new Response(JSON.stringify({ error: j.errors }), { headers: H });
       data = (j.response || []).map(e => ({
@@ -55,6 +55,32 @@ export async function onRequest({ request, env, waitUntil }) {
         type: e.type,
         detail: e.detail
       }));
+    } else if (type === 'detail') {
+      ttl = q.get('f') ? 21600 : 120;
+      const j = await af(`fixtures?id=${encodeURIComponent(q.get('id'))}`, env);
+      if (j.errors && Object.keys(j.errors).length) return new Response(JSON.stringify({ error: j.errors }), { headers: H });
+      const f = (j.response || [])[0] || {};
+      const fx = f.fixture || {};
+      data = {
+        venue: fx.venue && fx.venue.name,
+        city: fx.venue && fx.venue.city,
+        referee: fx.referee,
+        round: f.league && f.league.round,
+        ht: f.score && f.score.halftime,
+        events: (f.events || []).map(e => ({
+          min: e.time.elapsed, extra: e.time.extra, team: e.team.name,
+          player: e.player && e.player.name, assist: e.assist && e.assist.name,
+          type: e.type, detail: e.detail
+        })),
+        stats: (f.statistics || []).map(s => ({
+          team: s.team.name,
+          s: Object.fromEntries((s.statistics || []).map(x => [x.type, x.value]))
+        })),
+        lineups: (f.lineups || []).map(l => ({
+          team: l.team.name, formation: l.formation, coach: l.coach && l.coach.name,
+          xi: (l.startXI || []).map(p => p.player.name)
+        }))
+      };
     } else if (type === 'news') {
       ttl = 600;
       const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/all/news');
