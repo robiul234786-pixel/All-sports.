@@ -114,7 +114,7 @@ export async function onRequestGet({ request, env }) {
   const id = q.get('id') || '';
   const kind = q.get('kind') || 'match';
   const season = q.get('season') || String(new Date().getUTCFullYear());
-  if (!['soccer/uefa.champions','soccer/eng.1','soccer/esp.1','soccer/ger.1','soccer/ita.1','soccer/fra.1','soccer/usa.1','soccer/ksa.1','soccer/por.1','soccer/ned.1','soccer/bra.1','soccer/arg.1','soccer/eng.2','soccer/eng.3','soccer/eng.fa','soccer/eng.league_cup','soccer/fifa.world','soccer/fifa.friendly','soccer/fifa.worldq.afc','soccer/fifa.worldq.caf','soccer/fifa.worldq.concacaf','soccer/fifa.worldq.conmebol','soccer/fifa.worldq.ofc','soccer/fifa.worldq.uefa','soccer/uefa.nations','soccer/uefa.euro','soccer/uefa.euroq','soccer/conmebol.america','soccer/concacaf.gold','soccer/concacaf.nations.league','soccer/caf.nations','soccer/afc.asian.cup','basketball/nba','hockey/nhl','baseball/mlb'].includes(path) || !/^\d{1,12}$/.test(id) || !['match','team','player'].includes(kind) || !/^\d{4}$/.test(season) || +season < 1990 || +season > new Date().getUTCFullYear()+1) return Response.json({ error: 'Invalid request' }, { status: 400 });
+  if (!['soccer/uefa.champions','soccer/eng.1','soccer/esp.1','soccer/ger.1','soccer/ita.1','soccer/fra.1','soccer/usa.1','soccer/ksa.1','soccer/por.1','soccer/ned.1','soccer/bra.1','soccer/arg.1','soccer/eng.2','soccer/eng.3','soccer/eng.fa','soccer/eng.league_cup','soccer/fifa.world','soccer/fifa.friendly','soccer/fifa.worldq.afc','soccer/fifa.worldq.caf','soccer/fifa.worldq.concacaf','soccer/fifa.worldq.conmebol','soccer/fifa.worldq.ofc','soccer/fifa.worldq.uefa','soccer/uefa.nations','soccer/uefa.euro','soccer/uefa.euroq','soccer/conmebol.america','soccer/concacaf.gold','soccer/concacaf.nations.league','soccer/caf.nations','soccer/afc.asian.cup','basketball/nba','hockey/nhl','baseball/mlb'].includes(path) || !/^\d{1,12}$/.test(id) || !['match','team','player','standings'].includes(kind) || !/^\d{4}$/.test(season) || +season < 1990 || +season > new Date().getUTCFullYear()+1) return Response.json({ error: 'Invalid request' }, { status: 400 });
   const base = `https://site.api.espn.com/apis/site/v2/sports/${path}`;
   try {
     let result;
@@ -136,11 +136,48 @@ export async function onRequestGet({ request, env }) {
         get(kind === 'team' ? `${base}/teams/${id}?season=${season}` : `https://site.web.api.espn.com/apis/common/v3/sports/${path}/athletes/${id}`),
         get(`https://sports.core.api.espn.com/v2/sports/${sport}/leagues/${league}/seasons/${season}/types/1/${entity}/${id}/statistics`),
         kind === 'team' ? get(`${base}/teams/${id}/roster?season=${season}`) : Promise.resolve(null),
+        kind === 'team' ? get(`${base}/teams/${id}/schedule?season=${season}`) : get(`https://site.web.api.espn.com/apis/common/v3/sports/${path}/athletes/${id}/gamelog?season=${season}`),
+        kind === 'team' ? get(`${base}/news?team=${id}&limit=12`) : Promise.resolve(null),
       ]);
       const values = outcomes.map(r => r.status === 'fulfilled' ? r.value : null);
-      if (!values.some(Boolean)) throw new Error('Unavailable');
-      result = { profile: values[0]?.team || values[0]?.athlete || null, statistics: stats(values[1]), roster: values[2]?.athletes || [], season, unavailable: outcomes.map((r,i)=>r.status==='rejected'?['profile','statistics','roster'][i]:null).filter(Boolean) };
+      if (!values.slice(0, 3).some(Boolean)) throw new Error('Unavailable');
+      result = { profile: values[0]?.team || values[0]?.athlete || null, statistics: stats(values[1]), roster: values[2]?.athletes || [], season, unavailable: outcomes.slice(0, 3).map((r,i)=>r.status==='rejected'?['profile','statistics','roster'][i]:null).filter(Boolean) };
+      if (kind === 'team') {
+        const nx = values[0]?.team?.nextEvent || [];
+        result.schedule = (values[3]?.events || []).map((e) => {
+          const c = e.competitions?.[0] || {}, cs = c.competitors || [];
+          const me = cs.find((x) => String(x.team?.id) === id), op = cs.find((x) => x !== me);
+          const sc = (x) => x?.score?.displayValue ?? (typeof x?.score === 'object' ? x?.score?.value : x?.score);
+          return { id: e.id, date: e.date, league: e.league?.abbreviation || e.seasonType?.name || '', home: me?.homeAway === 'home', opp: op?.team?.displayName || '', oppId: op?.team?.id, oppLogo: op?.team?.logos?.[0]?.href || op?.team?.logo || '', my: sc(me), their: sc(op), done: !!(c.status?.type?.completed || e.status?.type?.completed), win: me?.winner };
+        });
+        result.nextEvent = nx[0] ? { date: nx[0].date, name: nx[0].name } : null;
+        result.news = (values[4]?.articles || []).slice(0, 12).map((a) => ({ title: a.headline, description: a.description || '', published: a.published, url: a.links?.web?.href || '' })).filter((a) => a.title && /^https:\/\//.test(a.url));
+      } else {
+        const gl = values[3];
+        if (gl) {
+          const meta = gl.events || {}, items = [];
+          (gl.seasonTypes || []).forEach((st) => (st.categories || []).forEach((cat) => (cat.events || []).forEach((ev) => { const m = meta[ev.eventId] || {}; items.push({ id: ev.eventId, date: m.gameDate, opp: m.opponent?.displayName || '', oppLogo: m.opponent?.logo || '', ha: m.atVs || '', score: m.score || '', res: m.gameResult || '', league: m.leagueName || '', stats: ev.stats || [] }); })));
+          items.sort((a, b) => new Date(b.date) - new Date(a.date));
+          result.gamelog = { labels: gl.names || gl.labels || [], items: items.slice(0, 25) };
+        }
+        if (env?.APIFOOTBALL_KEY && sport === 'soccer' && result.profile?.displayName) {
+          try { result.career = await afCareer(env, result.profile.displayName); } catch {}
+        }
+      }
     }
     return Response.json({ ...result, source: 'ESPN', updatedAt: new Date().toISOString() }, { headers: { 'Cache-Control': kind === 'match' ? 'public, max-age=15, s-maxage=15' : 'public, max-age=300, s-maxage=300' } });
   } catch { return Response.json({ error: 'Details are temporarily unavailable. Please retry.' }, { status: 502 }); }
+}
+
+async function afCareer(env, name) {
+  const parts = norm(name).split(' ').filter(Boolean);
+  if (!parts.length) return null;
+  const last = parts[parts.length - 1];
+  const found = await afGet(env, `/players/profiles?search=${encodeURIComponent(last.length >= 3 ? last : parts.join(' '))}`, 86400);
+  const hit = (found.response || []).map((r) => r.player).find((p) => parts.every((t) => norm(`${p.firstname} ${p.lastname} ${p.name}`).split(' ').includes(t))) || (found.response || []).map((r) => r.player).find((p) => norm(p.name).split(' ').includes(last) && parts[0][0] === norm(p.name)[0]);
+  if (!hit) return null;
+  const [tr, tp] = await Promise.all([afGet(env, `/transfers?player=${hit.id}`, 86400), afGet(env, `/trophies?player=${hit.id}`, 86400)]);
+  const transfers = (tr.response?.[0]?.transfers || []).map((t) => ({ date: t.date, type: t.type, from: t.teams?.out?.name, fromLogo: t.teams?.out?.logo, to: t.teams?.in?.name, toLogo: t.teams?.in?.logo })).sort((a, b) => new Date(b.date) - new Date(a.date));
+  const trophies = (tp.response || []).filter((t) => t.place === 'Winner').map((t) => ({ league: t.league, country: t.country, season: t.season }));
+  return { id: hit.id, photo: hit.photo, transfers, trophies };
 }
