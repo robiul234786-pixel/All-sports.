@@ -115,10 +115,14 @@ export async function onRequestGet({ request, env }) {
     if (kind === 'match') {
       const d = await get(`${base}/summary?event=${id}`);
       if (!d.header) throw new Error('Unavailable');
-      result = { header: d.header, rosters: d.rosters || [], teams: d.boxscore?.teams || [], players: d.boxscore?.players || [], events: d.keyEvents || d.scoringPlays || d.plays || [], commentary: d.commentary || [], venue: d.gameInfo?.venue?.fullName || '', season: d.header.season?.year };
+      result = { header: d.header, rosters: d.rosters || [], teams: d.boxscore?.teams || [], players: d.boxscore?.players || [], events: d.keyEvents || d.scoringPlays || d.plays || [], commentary: d.commentary || [], h2h: d.headToHeadGames || [], venue: d.gameInfo?.venue?.fullName || '', season: d.header.season?.year };
       if (path.startsWith('soccer/') && env?.APIFOOTBALL_KEY) {
         try { result.provider = await enrichWithApiFootball(env, d, result.rosters); } catch { result.provider = { used: false, reason: 'error' }; }
       }
+    } else if (kind === 'standings') {
+      const d = await get(`https://site.api.espn.com/apis/v2/sports/${path}/standings`);
+      const kids = d.children?.length ? d.children : [{ name: d.name, standings: d.standings }];
+      result = { tables: kids.map((c) => ({ name: c.name || '', entries: (c.standings?.entries || []).map((e) => ({ id: e.team?.id, name: e.team?.displayName || e.team?.name, logo: e.team?.logos?.[0]?.href || '', stats: Object.fromEntries((e.stats || []).map((s) => [s.name, s.displayValue ?? s.value])) })) })).filter((t) => t.entries.length) };
     } else {
       const [sport, league] = path.split('/');
       const entity = kind === 'team' ? 'teams' : 'athletes';
