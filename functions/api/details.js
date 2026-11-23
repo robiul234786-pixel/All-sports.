@@ -114,7 +114,7 @@ export async function onRequestGet({ request, env }) {
   const id = q.get('id') || '';
   const kind = q.get('kind') || 'match';
   const season = q.get('season') || String(new Date().getUTCFullYear());
-  if (!['soccer/uefa.champions','soccer/eng.1','soccer/esp.1','soccer/ger.1','soccer/ita.1','soccer/fra.1','soccer/usa.1','soccer/ksa.1','soccer/por.1','soccer/ned.1','soccer/bra.1','soccer/arg.1','soccer/eng.2','soccer/eng.3','soccer/eng.fa','soccer/eng.league_cup','soccer/fifa.world','soccer/fifa.friendly','soccer/fifa.worldq.afc','soccer/fifa.worldq.caf','soccer/fifa.worldq.concacaf','soccer/fifa.worldq.conmebol','soccer/fifa.worldq.ofc','soccer/fifa.worldq.uefa','soccer/uefa.nations','soccer/uefa.euro','soccer/uefa.euroq','soccer/conmebol.america','soccer/concacaf.gold','soccer/concacaf.nations.league','soccer/caf.nations','soccer/afc.asian.cup','basketball/nba','hockey/nhl','baseball/mlb'].includes(path) || !/^\d{1,12}$/.test(id) || !['match','team','player','standings'].includes(kind) || !/^\d{4}$/.test(season) || +season < 1990 || +season > new Date().getUTCFullYear()+1) return Response.json({ error: 'Invalid request' }, { status: 400 });
+  if (!['soccer/uefa.champions','soccer/eng.1','soccer/esp.1','soccer/ger.1','soccer/ita.1','soccer/fra.1','soccer/usa.1','soccer/ksa.1','soccer/por.1','soccer/ned.1','soccer/bra.1','soccer/arg.1','soccer/eng.2','soccer/eng.3','soccer/eng.fa','soccer/eng.league_cup','soccer/fifa.world','soccer/fifa.friendly','soccer/fifa.worldq.afc','soccer/fifa.worldq.caf','soccer/fifa.worldq.concacaf','soccer/fifa.worldq.conmebol','soccer/fifa.worldq.ofc','soccer/fifa.worldq.uefa','soccer/uefa.nations','soccer/uefa.euro','soccer/uefa.euroq','soccer/conmebol.america','soccer/concacaf.gold','soccer/concacaf.nations.league','soccer/caf.nations','soccer/afc.asian.cup','basketball/nba','hockey/nhl','baseball/mlb'].includes(path) || !/^\d{1,12}$/.test(id) || !['match','team','player','standings','league'].includes(kind) || !/^\d{4}$/.test(season) || +season < 1990 || +season > new Date().getUTCFullYear()+1) return Response.json({ error: 'Invalid request' }, { status: 400 });
   const base = `https://site.api.espn.com/apis/site/v2/sports/${path}`;
   try {
     let result;
@@ -129,6 +129,37 @@ export async function onRequestGet({ request, env }) {
       const d = await get(`https://site.api.espn.com/apis/v2/sports/${path}/standings`);
       const kids = d.children?.length ? d.children : [{ name: d.name, standings: d.standings }];
       result = { tables: kids.map((c) => ({ name: c.name || '', entries: (c.standings?.entries || []).map((e) => ({ id: e.team?.id, name: e.team?.displayName || e.team?.name, logo: e.team?.logos?.[0]?.href || '', stats: Object.fromEntries((e.stats || []).map((s) => [s.name, s.displayValue ?? s.value])) })) })).filter((t) => t.entries.length) };
+    } else if (kind === 'league') {
+      const part = q.get('part') || 'fixtures';
+      const ymd = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
+      const ev = (e) => {
+        const c = e.competitions?.[0] || {}, cs = c.competitors || [];
+        const h = cs.find((x) => x.homeAway === 'home') || cs[0] || {}, a = cs.find((x) => x.homeAway === 'away') || cs[1] || {};
+        const sc = (x) => x?.score?.displayValue ?? (typeof x?.score === 'object' ? x?.score?.value : x?.score);
+        const t = (x) => ({ id: x.team?.id, name: x.team?.displayName || '', abbr: x.team?.abbreviation || '', logo: x.team?.logo || x.team?.logos?.[0]?.href || '', score: sc(x) });
+        return { id: e.id, date: e.date, round: e.season?.slug || '', note: c.notes?.[0]?.headline || '', state: e.status?.type?.state, detail: e.status?.type?.shortDetail || '', home: t(h), away: t(a) };
+      };
+      if (part === 'fixtures') {
+        const now = Date.now();
+        const d = await get(`${base}/scoreboard?dates=${ymd(new Date(now - 3 * 864e5))}-${ymd(new Date(now + 18 * 864e5))}&limit=200`);
+        result = { events: (d.events || []).map(ev) };
+      } else if (part === 'knockout') {
+        const y = +season;
+        const d = await get(`${base}/scoreboard?dates=${y}0801-${y + 1}0731&limit=400`);
+        result = { events: (d.events || []).map(ev).filter((e) => /round-of|quarter|semi|final|play-?off/i.test(e.round)) };
+      } else {
+        const [sport, league] = path.split('/');
+        const d = await get(`https://sports.core.api.espn.com/v2/sports/${sport}/leagues/${league}/seasons/${season}/types/1/leaders?limit=10`);
+        const okRef = (u) => typeof u === 'string' && u.replace('http://', 'https://').startsWith('https://sports.core.api.espn.com/');
+        const cats = (d.categories || []).filter((c) => /goal|assist/i.test(c.name || c.displayName || '')).slice(0, 2);
+        const out = [];
+        for (const c of cats) {
+          const leaders = (c.leaders || []).slice(0, 10);
+          const names = await Promise.all(leaders.map((l) => okRef(l.athlete?.$ref) ? get(l.athlete.$ref.replace('http://', 'https://')).then((a) => ({ name: a.displayName, id: a.id, photo: a.headshot?.href || '' })).catch(() => null) : null));
+          out.push({ name: c.displayName || c.name, rows: leaders.map((l, i) => ({ value: l.displayValue ?? l.value, name: names[i]?.name || '', id: names[i]?.id, photo: names[i]?.photo || '' })).filter((r) => r.name) });
+        }
+        result = { categories: out };
+      }
     } else {
       const [sport, league] = path.split('/');
       const entity = kind === 'team' ? 'teams' : 'athletes';
@@ -165,7 +196,7 @@ export async function onRequestGet({ request, env }) {
         }
       }
     }
-    return Response.json({ ...result, source: 'ESPN', updatedAt: new Date().toISOString() }, { headers: { 'Cache-Control': kind === 'match' ? 'public, max-age=15, s-maxage=15' : 'public, max-age=300, s-maxage=300' } });
+    return Response.json({ ...result, source: 'ESPN', updatedAt: new Date().toISOString() }, { headers: { 'Cache-Control': kind === 'match' ? 'public, max-age=15, s-maxage=15' : 'public, max-age=600, s-maxage=600' } });
   } catch { return Response.json({ error: 'Details are temporarily unavailable. Please retry.' }, { status: 502 }); }
 }
 
