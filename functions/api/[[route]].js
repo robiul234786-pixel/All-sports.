@@ -45,7 +45,7 @@ const JSON_HEAD = (ttl) => ({ "Content-Type": "application/json", "Access-Contro
 const shapeLineup = (x) => ({
   team: { id: x.team?.id, name: x.team?.name },
   formation: x.formation || "",
-  startXI: (x.startXI || []).map((p) => ({ name: p.player?.name, number: p.player?.number, pos: p.player?.pos })),
+  startXI: (x.startXI || []).map((p) => ({ name: p.player?.name, number: p.player?.number, pos: p.player?.pos, grid: p.player?.grid, photo: p.player?.id ? `https://media.api-sports.io/football/players/${p.player.id}.png` : '' })),
   subs: (x.substitutes || []).map((p) => ({ name: p.player?.name, number: p.player?.number, pos: p.player?.pos })),
 });
 
