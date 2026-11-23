@@ -117,3 +117,18 @@ html.m #m-app[data-mtheme=light]{--bg:#f2f7f3;--card:#fff;--card2:#eaf3ec;--line
 .m-toast{position:absolute;left:16px;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));background:#16301c;border:1px solid var(--g2);color:#fff;border-radius:12px;padding:11px 14px;font-size:13px;z-index:30;text-align:center}
 .m-pop{animation:mp .22s ease}@keyframes mp{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
 #m-app h1,#m-app h2,#m-app h3,#m-app h4{color:inherit;letter-spacing:0}
+
+.m-lp{position:relative;border-radius:14px;overflow:hidden;background:repeating-linear-gradient(180deg,#3d8a5d 0 10%,#40905f 10% 20%);border:1px solid #ffffff33}
+.m-lp .bx{position:absolute;left:25%;right:25%;top:0;height:13%;border:2px solid #ffffff44;border-top:0}
+.m-lp .cc{position:absolute;left:50%;bottom:-44px;width:110px;height:110px;margin-left:-55px;border:2px solid #ffffff44;border-radius:50%}
+.lp{position:absolute;transform:translate(-50%,-50%);width:22%;min-width:62px;text-align:center;z-index:1}
+.lp .pp{position:relative;display:grid;place-items:center;width:46px;height:46px;margin:0 auto;border-radius:50%;background:#fff;color:#2b4a36;font:700 13px sans-serif;border:2px solid #fff;box-shadow:0 2px 6px #0005}
+.lp .pp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;background:#fff}
+.lp .rt,.rt{display:inline-block;font:700 12px/1 sans-serif;font-style:normal;color:#fff;padding:3px 6px;border-radius:5px;position:relative;margin-top:-8px;z-index:2}
+.rt.g{background:#1fbf3a}.rt.o{background:#f0a020}.rt.r{background:#e03a2a}.rt.b{background:#17a8d8}
+.lp b{display:block;font:600 10.5px/1.2 sans-serif;color:#fff;text-shadow:0 1px 2px #000a;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp b s{text-decoration:none;opacity:.75}
+.lp u{position:absolute;text-decoration:none;z-index:3;font-size:11px;line-height:1}
+.lp .cd{top:-3px;left:-4px;width:11px;height:15px;border-radius:2px}.lp .yc{background:#f5c518}.lp .rc{background:#e03a2a}
+.lp .sb{bottom:-2px;left:-6px;background:#fff;color:#d33;border-radius:50%;width:16px;height:16px;display:grid;place-items:center;font-size:11px}
+.lp .gl{top:-5px;right:-8px;background:#fff;border-radius:9px;padding:1px 3px;color:#000}
