@@ -76,7 +76,7 @@ function findPlayer(idx, p) {
 async function enrichWithApiFootball(env, summary, rosters) {
   const comp = summary.header?.competitions?.[0];
   const state = comp?.status?.type?.state;
-  if (!comp?.date || state === 'pre') return { used: false, reason: 'not-started' };
+  if (!comp?.date) return { used: false, reason: 'not-started' };
   const cs = comp.competitors || [];
   const home = cs.find((c) => c.homeAway === 'home')?.team?.displayName;
   const away = cs.find((c) => c.homeAway === 'away')?.team?.displayName;
@@ -85,6 +85,12 @@ async function enrichWithApiFootball(env, summary, rosters) {
   const list = await afGet(env, `/fixtures?date=${day}`, 600);
   const fx = list.response.find((f) => sameTeam(f.teams?.home?.name, home) && sameTeam(f.teams?.away?.name, away));
   if (!fx) return { used: false, reason: 'fixture-not-found' };
+  let h2h = [];
+  try {
+    const hh = await afGet(env, `/fixtures/headtohead?h2h=${fx.teams.home.id}-${fx.teams.away.id}&last=10`, 21600);
+    h2h = hh.response.map((f) => ({ date: f.fixture.date, league: f.league?.name, home: f.teams.home.name, away: f.teams.away.name, hg: f.goals.home, ag: f.goals.away })).sort((a, b) => new Date(b.date) - new Date(a.date));
+  } catch {}
+  if (state === 'pre') return { used: false, reason: 'not-started', h2h };
   const pl = await afGet(env, `/fixtures/players?fixture=${fx.fixture.id}`, state === 'post' ? 21600 : 60);
   let matched = 0, total = 0;
   for (const t of rosters) {
@@ -100,7 +106,7 @@ async function enrichWithApiFootball(env, summary, rosters) {
       matched++;
     }
   }
-  return { used: true, matched, total, source: 'API-Football' };
+  return { used: true, matched, total, source: 'API-Football', h2h };
 }
 export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
