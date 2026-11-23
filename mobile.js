@@ -113,7 +113,7 @@
     '<div class="m-card" style="padding:14px 10px 4px"><div class="m-dh"><div class="lg">'+esc(g.name)+'<small>'+esc(d&&d.venue?d.venue:g.region)+'</small></div><div class="m-big"><div class="t">'+mc(m[9],m[6],1)+esc(m[0])+'</div><div class="sc">'+(m[2]==null?'– : –':esc(hs)+' - '+esc(as))+'<span class="tm'+(live?'':' dim')+'">'+esc(tm)+'</span></div><div class="t">'+mc(m[10],m[7],1)+esc(m[1])+'</div></div></div>'+
     '<div class="m-dtabs">'+[['ov','Overview'],['st','Statistics'],['lu','Lineups'],['h2','H2H'],['sd','Standings']].map(function(t){return '<button class="'+(D.tab===t[0]?'on':'')+'" data-mdt="'+t[0]+'">'+t[1]+'</button>'}).join('')+'</div></div>';
     html+='<div style="padding-top:6px">';
-    if(String(key(m)).indexOf('af:')===0)html+='<div class="m-note">Detailed stats are not available for this match.</div>';
+    if(String(key(m)).indexOf('af:')===0)html+=D.tab==='lu'?tab('lu',{},m,live):'<div class="m-note">Only line-ups are available for national team matches.</div>';
     else if(D.err&&!d)html+=empty('info','Details unavailable','Please try again shortly.');
     else if(!d)html+='<div class="m-note">Loading match details…</div>';
     else html+=tab(D.tab,d,m,live);
@@ -133,8 +133,14 @@
     if(t==='st'){var ts2=d.teams||[];if(ts2.length<2)return '<div class="m-note">Match statistics have not been published.</div>';
       var a=ts2.find(function(x){return x.homeAway==='home'})||ts2[0],b=ts2.find(function(x){return x.homeAway==='away'})||ts2[1];
       return '<div class="m-card" style="padding:4px 14px">'+(a.statistics||[]).map(function(s){var o=(b.statistics||[]).find(function(y){return y.name===s.name});return bar(s.label||s.name,s.displayValue,o?o.displayValue:null)}).join('')+'</div>'}
-    if(t==='lu'){if(!(d.rosters||[]).length)return '<div class="m-note">Line-ups have not been published yet.</div>';
-      return d.rosters.map(function(r){return '<div class="m-h3">'+esc(r.team.displayName)+' <small style="color:var(--mu);font-weight:400">'+esc(r.formation||'')+'</small></div><div class="m-card">'+(r.roster||[]).filter(function(p){return p.starter}).concat((r.roster||[]).filter(function(p){return !p.starter})).map(function(p,i,arr){return '<div class="m-pl"><span class="j">'+esc(p.jersey||'–')+'</span>'+esc(p.athlete&&p.athlete.displayName||'')+'<small>'+(p.starter?'':'SUB · ')+esc(p.position&&(p.position.abbreviation||p.position.displayName)||'')+'</small></div>'}).join('')+'</div>'}).join('')}
+    if(t==='lu'){
+      var af=String(M.det.k).indexOf('af:')===0;
+      if(af){var A=M.det.af;if(A===undefined)return '<div class="m-note">Loading line-ups…</div>';if(!A||!A.teams||!A.teams.length)return '<div class="m-note">Line-ups are not available yet. They usually appear about an hour before kick-off.</div>';
+        return '<div class="m-note" style="padding:4px 0 0">'+(A.official?'Official line-up':'Probable line-up (from last match)')+'</div>'+A.teams.map(function(r){return '<div class="m-h3">'+esc(r.team.name)+' <small style="color:var(--mu);font-weight:400">'+esc(r.formation||'')+'</small></div><div class="m-card">'+r.startXI.map(function(p){return '<div class="m-pl"><span class="j">'+esc(p.number||'–')+'</span>'+esc(p.name)+'<small>'+esc(p.pos||'')+'</small></div>'}).join('')+'</div>'+(r.subs.length?'<div class="m-h3" style="font-size:14px;color:var(--mu)">Substitutes</div><div class="m-card">'+r.subs.map(function(p){return '<div class="m-pl"><span class="j">'+esc(p.number||'–')+'</span>'+esc(p.name)+'</div>'}).join('')+'</div>':'')}).join('')}
+      if(!(d.rosters||[]).length)return '<div class="m-note">Line-ups have not been published yet.</div>';
+      return d.rosters.map(function(r){var ro=r.roster||[],st=ro.filter(function(p){return p.starter}),sb=ro.filter(function(p){return !p.starter});
+        function pr(p){return '<div class="m-pl"><span class="j">'+esc(p.jersey||'–')+'</span>'+esc(p.athlete&&p.athlete.displayName||'')+'<small>'+esc(p.starter?(p.position&&(p.position.abbreviation||p.position.displayName)||''):'')+'</small></div>'}
+        return '<div class="m-h3">'+esc(r.team.displayName)+' <small style="color:var(--mu);font-weight:400">'+esc(r.formation||'')+'</small></div>'+(st.length?'<div class="m-card">'+st.map(pr).join('')+'</div>':'')+(sb.length?'<div class="m-h3" style="font-size:14px;color:var(--mu)">Substitutes</div><div class="m-card">'+sb.map(pr).join('')+'</div>':'')}).join('')}
     if(t==='h2'){var ev=[];(d.h2h||[]).forEach(function(x,i){if(i===0)(x.events||[]).forEach(function(e){ev.push({t:x.team&&x.team.displayName,e:e})})});
       if(!ev.length)return '<div class="m-note">Head-to-head history is not available for this match.</div>';
       return '<div class="m-card">'+ev.slice(0,10).map(function(x){var e=x.e;return '<div class="m-pl"><span style="color:var(--mu);width:84px;font-size:12px">'+esc(String(e.gameDate||e.date||'').slice(0,10))+'</span>'+esc(x.t||'')+' <b style="margin:0 6px">'+esc(e.score||((e.homeTeamScore!=null?e.homeTeamScore+'-'+e.awayTeamScore:'')))+'</b> '+esc((e.opponent&&e.opponent.displayName)||'')+'<small>'+esc(e.gameResult||'')+'</small></div>'}).join('')+'</div>'}
@@ -144,8 +150,8 @@
     return ''}
 
   function tlogo(e){var im=e.logo&&/^https:\/\/a\.espncdn\.com\//.test(e.logo)?'<img src="'+esc(e.logo)+'" alt="" referrerpolicy="no-referrer">':'';return '<span class="mc">'+esc(String(e.name||'').slice(0,2).toUpperCase())+im+'</span>'}
-  function openDet(k){var o=find(k);if(!o)return;M.det={k:k,tab:'ov',data:null,std:undefined,err:false,g:o.g};loadDet();draw()}
-  function loadDet(){var D=M.det;if(!D)return;var o=find(D.k);if(!o||String(D.k).indexOf('af:')===0)return;var k=D.k,season=Number((typeof feedDate!=='undefined'&&feedDate||'').slice(0,4))||new Date().getUTCFullYear();
+  function openDet(k){var o=find(k);if(!o)return;M.det={k:k,tab:String(k).indexOf('af:')===0?'lu':'ov',data:null,std:undefined,err:false,g:o.g};loadDet();draw()}
+  function loadDet(){var D=M.det;if(!D)return;var o=find(D.k);if(!o)return;if(String(D.k).indexOf('af:')===0){var kk=D.k;fetch('/api/lineup?fixture='+encodeURIComponent(kk.slice(3)),{signal:AbortSignal.timeout(20000)}).then(function(r){return r.json()}).then(function(j){if(M.det&&M.det.k===kk){M.det.af=j;draw()}}).catch(function(){if(M.det&&M.det.k===kk){M.det.af=null;draw()}});return}var k=D.k,season=Number((typeof feedDate!=='undefined'&&feedDate||'').slice(0,4))||new Date().getUTCFullYear();
     fetch('/api/details?'+new URLSearchParams({kind:'match',id:k,league:o.g.path,season:String(season)}),{signal:AbortSignal.timeout(15000)}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){if(M.det&&M.det.k===k){M.det.data=j;M.det.err=false;draw()}}).catch(function(){if(M.det&&M.det.k===k){M.det.err=true;draw()}})}
   function loadStd(){var D=M.det;if(!D||D.std!==undefined||D.stdBusy)return;var o=find(D.k);if(!o)return;D.stdBusy=1;var k=D.k;
     fetch('/api/details?'+new URLSearchParams({kind:'standings',id:'0',league:o.g.path,season:String(new Date().getUTCFullYear())}),{signal:AbortSignal.timeout(15000)}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){if(M.det&&M.det.k===k){M.det.std=j;draw()}}).catch(function(){if(M.det&&M.det.k===k){M.det.std=null;draw()}})}
@@ -162,15 +168,19 @@
   var scrollKeep={};
   function draw(){
     if(!root.isConnected||!document.documentElement.classList.contains('m'))return;
-    var sc=root.querySelector('.m-scr'),sy=sc?sc.scrollTop:0,sk=sc?M.tab+(M.sub||'')+(M.det?M.det.k+M.det.tab:''):'';
-    var fi=document.activeElement&&document.activeElement.id,fv=document.activeElement&&document.activeElement.value,fs=fi&&document.activeElement.selectionStart;
+    var sc=root.querySelector('.m-scr'),sy=sc?sc.scrollTop:0;
+    var fi=document.activeElement&&document.activeElement.id,fs=fi&&document.activeElement.selectionStart;
     var body=M.det?detail():M.sub==='sports'?sports():M.sub==='search'?search():M.tab==='home'?home():M.tab==='matches'?matches():M.tab==='fav'?favs():M.tab==='news'?news():more();
+    var nk=M.tab+(M.sub||'')+(M.det?M.det.k+M.det.tab:''),changed=nk!==scrollKeep.k;
+    if(!changed)body=body.replace(' m-pop','');
     var nav=[['home','Home','home'],['matches','Matches','ball'],['fav','Favourites','star'],['news','News','news'],['more','More','dots']].map(function(n){return '<button class="'+(M.tab===n[0]&&!M.det?'on':'')+'" data-mn="'+n[0]+'">'+ic(n[2])+n[1]+'</button>'}).join('');
-    root.innerHTML=body+(M.det?'':'<nav class="m-nav">'+nav+'</nav>')+sheet()+(M.toast?'<div class="m-toast">'+esc(M.toast)+'</div>':'');
-    var ns=root.querySelector('.m-scr');if(ns&&sk===scrollKeep.k)ns.scrollTop=sy;scrollKeep.k=M.tab+(M.sub||'')+(M.det?M.det.k+M.det.tab:'');
+    var out=body+(M.det?'':'<nav class="m-nav">'+nav+'</nav>')+sheet()+(M.toast?'<div class="m-toast">'+esc(M.toast)+'</div>':'');
+    if(!changed&&out===M.last)return;
+    M.last=out;root.innerHTML=out;scrollKeep.k=nk;
+    var ns=root.querySelector('.m-scr');if(ns&&!changed)ns.scrollTop=sy;
     if(fi){var el=document.getElementById(fi);if(el&&el.tagName==='INPUT'){el.focus();try{el.setSelectionRange(fs,fs)}catch(e){}}}
     if(M.det&&M.det.tab==='sd')loadStd();
-    var dt=document.getElementById('m-dates');if(dt&&!dt.dataset.s){dt.dataset.s=1;var on=dt.querySelector('.on');if(on)dt.scrollLeft=on.offsetLeft-dt.clientWidth/2+on.offsetWidth/2}
+    var dt=document.getElementById('m-dates');if(dt){var on=dt.querySelector('.on');if(on)dt.scrollLeft=on.offsetLeft-dt.clientWidth/2+on.offsetWidth/2}
   }
   function go(tab){M.live=false;M.tab=tab;M.sub='';M.det=null;M.sheet='';draw()}
   function setDate(o){date=o;M.det=null;render();draw()}
