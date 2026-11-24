@@ -78,12 +78,27 @@ export async function onRequestGet({ request, env }) {
     });
   }
 
-  // ---------- /api/lineup?fixture=ID (official lineup, else probable XI from each team's last match) ----------
+  // ---------- /api/lineup?fixture=ID  or  ?home=&away=&date=  (official lineup, else probable XI from each team's last match) ----------
   if (path.endsWith("/lineup")) {
-    const id = url.searchParams.get("fixture") || "";
-    if (!/^\d{1,12}$/.test(id)) return new Response(JSON.stringify({ error: "bad-id" }), { status: 400, headers: JSON_HEAD(60) });
+    let id = url.searchParams.get("fixture") || "";
+    const hn = url.searchParams.get("home") || "", an = url.searchParams.get("away") || "", dt = url.searchParams.get("date") || "";
+    if (!/^\d{1,12}$/.test(id) && !(hn && an && /^\d{4}-\d{2}-\d{2}/.test(dt))) return new Response(JSON.stringify({ error: "bad-id" }), { status: 400, headers: JSON_HEAD(60) });
     return cached(request, 900, async () => {
       try {
+        if (!/^\d{1,12}$/.test(id)) {
+          const nz = (x) => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\b(fc|cf|sc|afc|club|de|the)\b/g, " ").replace(/\s+/g, " ").trim();
+          const same = (a, b) => { a = nz(a); b = nz(b); return a && b && (a === b || a.includes(b) || b.includes(a)); };
+          const d0 = new Date(dt.slice(0, 10) + "T00:00:00Z").getTime();
+          let found = null;
+          for (const off of [0, 1, -1]) {
+            const day = new Date(d0 + off * 864e5).toISOString().slice(0, 10);
+            const list = (await af(`/fixtures?date=${day}`, env)).response || [];
+            found = list.find((f) => same(f.teams.home.name, hn) && same(f.teams.away.name, an));
+            if (found) break;
+          }
+          if (!found) return { official: false, teams: [], notFound: true };
+          id = String(found.fixture.id);
+        }
         const off = await af(`/fixtures/lineups?fixture=${id}`, env);
         if ((off.response || []).length) return { official: true, teams: off.response.map(shapeLineup) };
         const fx = (await af(`/fixtures?id=${id}`, env)).response?.[0];
