@@ -139,19 +139,87 @@
     if(!list.length)return h+'<div class="m-note">Live commentary has not started or is not published for this match.</div>';
     return h+list.slice(0,80).map(function(c){var tx=c.text||'',tm=(c.time&&c.time.displayValue)||'',ty=(c.play&&c.play.type&&c.play.type.text)||'',hi=/goal|card|substitution|penalty|var|offside/i.test(ty)||/^(GOAL|CLOSE|SAVE|PENALTY|YELLOW|RED|SUBSTITUTION|CHANCE|WHAT A)/.test(tx);
       return '<div class="m-cm'+(hi?' hi':'')+'">'+(hi?'<div class="top"><span class="tp">'+esc(tm)+'</span><b>'+esc(/goal/i.test(ty)?'Goal':/card/i.test(ty)?'Card':/substitution/i.test(ty)?'Substitution':'Highlight')+'</b></div>':'<div class="tm2">'+esc(tm)+'</div>')+'<p>'+esc(tx)+'</p></div>'}).join('')}
+
+  /* ---------- Overview (Sofascore-style details) ---------- */
+  function phOf(a){a=a||{};return a.apiPhoto||(a.headshot&&(a.headshot.href||a.headshot))||(a.id?'https://a.espncdn.com/i/headshots/soccer/players/full/'+encodeURIComponent(a.id)+'.png':'')}
+  function topRated(d){var out=[];(d.rosters||[]).forEach(function(r){var ctx=null;try{ctx=teamCtx(r)}catch(e){}(r.roster||[]).forEach(function(p){if(!p.starter&&!p.subbedIn)return;var v=parseFloat(ratingOf(p,ctx));if(v)out.push({v:v,p:p,r:r})})});out.sort(function(a,b){return b.v-a.v});return out}
+  function winProb(d){var pr=d.predictor,h=pr&&pr.homeTeam&&parseFloat(pr.homeTeam.gameProjection),a=pr&&pr.awayTeam&&parseFloat(pr.awayTeam.gameProjection);
+    if(h>=0&&a>=0){h=Math.round(h);a=Math.round(a);return{h:h,a:a,x:Math.max(0,100-h-a)}}
+    var w=d.winprob;if(w&&w.homeWinPercentage!=null){var hh=Math.round(w.homeWinPercentage*100),tie=Math.round((w.tiePercentage||0)*100);return{h:hh,x:tie,a:Math.max(0,100-hh-tie)}}return null}
+  var VOTE={};try{VOTE=JSON.parse(localStorage.getItem('allsport_m_vote')||'{}')}catch(e){}
+  function minOf(t){var m=String(t||'').match(/(\d+)/);return m?+m[1]:0}
+  function momentum(d,hid){var N=19,H=[],A=[];for(var i=0;i<N;i++){H.push(0);A.push(0)}var n=0;
+    (d.commentary||[]).forEach(function(c){var p=c.play||{},ty=(p.type&&p.type.text)||'',tx=c.text||'',tm=(c.time&&c.time.displayValue)||'',tid=p.team&&p.team.id;if(tid==null)return;
+      var w=/goal/i.test(ty)?6:/shot|attempt|save|miss|post|wood/i.test(ty+' '+tx.slice(0,40))?3:/corner/i.test(ty)?1.5:/foul|offside|free/i.test(ty)?.5:0;if(!w)return;
+      var b=Math.min(N-1,Math.floor(minOf(tm)/5));if(String(tid)===String(hid))H[b]+=w;else A[b]+=w;n++});
+    return n>=6?{H:H,A:A}:null}
+  function momentumSVG(M0){var N=M0.H.length,W=300,Hh=70,mx=Math.max.apply(null,M0.H.concat(M0.A))||1,step=W/(N-1);
+    function path(arr,sign,fill){var d='M0 '+Hh/2;arr.forEach(function(v,i){d+=' L'+(i*step).toFixed(1)+' '+(Hh/2-sign*v/mx*(Hh/2-4)).toFixed(1)});d+=' L'+W+' '+Hh/2+' Z';return '<path d="'+d+'" fill="'+fill+'" opacity=".85"/>'}
+    return '<svg viewBox="0 0 '+W+' '+Hh+'" style="width:100%;height:auto;display:block;stroke:none;fill:none"><rect width="'+W+'" height="'+Hh+'" rx="8" fill="#ffffff10"/>'+path(M0.H,1,'#3ddc3a')+path(M0.A,-1,'#6c7bff')+'<line x1="0" y1="'+Hh/2+'" x2="'+W+'" y2="'+Hh/2+'" stroke="#ffffff33" stroke-width="1"/></svg>'}
+  function timeline(d,hid){
+    var evs=(d.events||[]).map(function(e){var p=e.play||e,ty=(p.type&&p.type.text)||'';return{p:p,ty:ty,time:(e.time&&e.time.displayValue)||(p.clock&&p.clock.displayValue)||'',e:e}}).filter(function(x){return /goal|card|substitution|penalty/i.test(x.ty)&&!/kickoff|halftime|disallow|no goal|missed|saved/i.test(x.ty)});
+    if(!evs.length)return '<div class="m-card" style="padding:6px 14px"><div class="m-note">No match events published yet.</div></div>';
+    var hs=0,as=0;evs.sort(function(a,b){return minOf(a.time)-minOf(b.time)});
+    evs.forEach(function(x){x.home=x.p.team&&String(x.p.team.id)===String(hid);x.goal=/goal|penalty - scored|scored/i.test(x.ty)&&!/card/i.test(x.ty);if(x.goal){x.home?hs++:as++}x.sc=hs+' - '+as;x.m=minOf(x.time);x.per=x.m>90?3:(x.m<=45&&!/^45\+/.test('')?1:2)});
+    evs.forEach(function(x){if(x.m>45&&/^45/.test(String(x.time)))x.per=1});
+    var per={1:[],2:[],3:[]};evs.forEach(function(x){per[x.per].push(x)});
+    var names={1:'1st half',2:'2nd half',3:'Extra time'},h='<div class="m-card" style="padding:8px 14px">';
+    [3,2,1].forEach(function(k){var l=per[k];if(!l.length)return;h+='<div class="m-per"><i></i><span>'+names[k]+' '+esc(l[l.length-1].sc)+'</span><i></i></div>'+l.slice().reverse().map(function(x){
+      var a=x.p.participants&&x.p.participants[0]&&x.p.participants[0].athlete&&x.p.participants[0].athlete.displayName,b=x.p.participants&&x.p.participants[1]&&x.p.participants[1].athlete&&x.p.participants[1].athlete.displayName,nm=a||x.e.text||x.ty;
+      var ico=/red/i.test(x.ty)?'🟥':/yellow/i.test(x.ty)?'🟨':/substitution/i.test(x.ty)?'🔁':'⚽';
+      return '<div class="m-te"><b class="t">'+esc(x.time||x.m+"'")+'</b><span class="i">'+ico+'</span>'+(x.goal?'<em class="pill">'+esc(x.sc)+'</em>':'')+'<span class="n">'+esc(nm)+(b?' <small>'+(x.goal?esc(b):'↔ '+esc(b))+'</small>':'')+'</span></div>'}).join('')});
+    return h+'</div>'}
+  function formCard(d,m,hc,ac){var F=d.form||[];if(!F.length)return '';
+    function col(team,nm){var f=F.find(function(x){return String(x.team)===String(team)});if(!f||!f.events.length)return '<div class="c"><small>'+esc(nm)+'</small><div class="m-note" style="padding:6px">–</div></div>';
+      return '<div class="c"><small>'+esc(nm)+'</small>'+f.events.map(function(e){var cl=e.res==='W'?'w':e.res==='L'?'l':'d';return '<div class="m-fr"><b class="sc '+cl+'">'+esc(e.score||'')+'</b>'+logo(e.oppLogo,String(e.opp||'').slice(0,3).toUpperCase())+'</div>'}).join('')+'</div>'}
+    return '<div class="m-card" style="padding:14px"><div class="m-h3" style="margin:0 0 10px;text-align:center">Team form</div><div class="m-form">'+col(hc&&hc.id,m[0])+col(ac&&ac.id,m[1])+'</div></div>'}
+  function infoCard(d,m,o){var I=d.info||{},rows=[];
+    rows.push(['⚽',esc(o.g.name)+(I.round?', '+esc(I.round):'')]);
+    if(m[13])rows.push(['🗓',esc(fmtD(m[13],{day:'numeric',month:'short',year:'numeric'}))+' · '+esc(fmtT(m[13]))]);
+    if(I.venue)rows.push(['🏟',esc(I.venue)]);
+    if(I.city)rows.push(['📍',esc(I.city)]);
+    if(I.referee)rows.push(['🧑‍⚖️','Referee: '+esc(I.referee)]);
+    if(I.attendance)rows.push(['👥','Attendance: '+esc(Number(I.attendance).toLocaleString('en-US'))]);
+    rows.push(['📺',(I.broadcasts&&I.broadcasts.length)?'Broadcast: '+esc(I.broadcasts.join(', ')):'Broadcaster information is not available']);
+    return '<div class="m-card" style="padding:6px 14px">'+rows.map(function(r){return '<div class="m-if"><span>'+r[0]+'</span><div>'+r[1]+'</div></div>'}).join('')+(I.link&&/^https:\/\//.test(I.link)?'<a class="m-if" href="'+esc(I.link)+'" target="_blank" rel="noopener noreferrer" style="color:var(--g);text-decoration:none"><span>↗</span><div>Open match on ESPN</div></a>':'')+'</div>'}
+  function miniStd(d,hc,ac){var S=M.det.std;if(S===undefined)return '';if(!S||!S.tables||!S.tables.length)return '';var ids=[String(hc&&hc.id),String(ac&&ac.id)],rows=[];
+    S.tables.forEach(function(tb){tb.entries.forEach(function(e,i){if(ids.indexOf(String(e.id))>=0)rows.push({e:e,i:i})})});if(!rows.length)return '';
+    return '<div class="m-card" style="padding:12px 14px"><div class="m-h3" style="margin:0 0 6px;text-align:center">Standings</div><table class="m-tbl"><thead><tr><th>#</th><th style="text-align:left">Team</th><th>P</th><th>Diff</th><th>PTS</th></tr></thead><tbody>'+rows.map(function(r){var x=r.e.stats||{};return '<tr class="me"><td>'+esc(x.rank||r.i+1)+'</td><td class="n">'+tlogo(r.e)+esc(r.e.name)+'</td><td>'+esc(x.gamesPlayed||'')+'</td><td>'+esc(x.pointDifferential||'')+'</td><td><b>'+esc(x.points||'')+'</b></td></tr>'}).join('')+'</tbody></table></div>'}
+  function overviewTab(d,m,live){
+    var o=find(M.det.k),hc=comp(d,'home'),ac=comp(d,'away'),hid=hc&&hc.id,h='',top=topRated(d);
+    var fin=m[5]==='finished',up=m[5]==='upcoming';
+    /* Player of the Match race */
+    if(top.length&&!up){h+='<div class="m-card" style="padding:14px"><div class="m-h3" style="margin:0 0 10px;text-align:center">Player of the Match race</div>'+top.slice(0,3).map(function(x){var a=x.p.athlete||{};return '<div class="m-pl" data-mp="'+esc(a.id)+'" style="cursor:pointer;padding:8px 0;border:0"><span class="mc" style="width:46px;height:46px">'+esc(String(a.displayName||'').split(' ').map(function(w){return w[0]}).join('').slice(0,2))+img(phOf(a))+'</span><span style="font-size:15px">'+esc(a.shortName||a.displayName||'')+'</span><em class="rt '+rcls(x.v)+'" style="margin-left:auto;position:static;font-size:16px;padding:5px 9px">'+x.v.toFixed(1)+'</em></div>'}).join('')+'</div>'}
+    /* Who will win */
+    var wp=winProb(d),vk=key(m),vt=VOTE[vk];
+    h+='<div class="m-card" style="padding:14px"><div class="m-h3" style="margin:0 0 4px">Who will win?</div>'+(wp?'<div class="m-note" style="padding:0 0 10px;text-align:left">'+(d.predictor?'Win probability by ESPN':'Live win probability')+'</div>':'<div class="m-note" style="padding:0 0 10px;text-align:left">Tap to pick — saved on this phone</div>')+
+      '<div class="m-vote">'+[['h',m[0],wp&&wp.h],['x','Draw',wp&&wp.x],['a',m[1],wp&&wp.a]].map(function(v){return '<button class="'+(vt===v[0]?'on':'')+'" data-mv="'+v[0]+'"><span>'+esc(v[0]==='x'?'X':String(v[1]).slice(0,10))+'</span><b>'+(v[2]!=null?v[2]+'%':'')+'</b></button>'}).join('')+'</div></div>';
+    /* Compare */
+    h+='<button class="m-btn w" data-ma="cmpmatch" style="margin-bottom:12px;padding:12px;background:var(--card);color:var(--tx);box-shadow:none;border:1px solid var(--line)">⚖ Compare teams</button>';
+    /* Info */
+    if(o)h+=infoCard(d,m,o);
+    /* Momentum */
+    var mo=momentum(d,hid);if(mo&&!up)h+='<div class="m-card" style="padding:14px"><div class="m-h3" style="margin:0 0 8px;text-align:center">Game momentum</div>'+momentumSVG(mo)+'<div class="m-note" style="padding:6px 0 0">Based on shots, corners and key events in the commentary.</div></div>';
+    /* Timeline */
+    if(!up)h+=timeline(d,hid);
+    /* POTM vote */
+    if((fin||(live&&minOf(m[4])>=80))&&top.length){var pk=VOTE['p'+vk];h+='<div class="m-card" style="padding:14px"><div class="m-h3" style="margin:0 0 8px;text-align:center">Vote: Player of the Match</div>'+top.slice(0,3).map(function(x){var a=x.p.athlete||{},on=pk===String(a.id);return '<button class="m-vp'+(on?' on':'')+'" data-mvp="'+esc(a.id)+'">'+(on?'✓ ':'')+esc(a.shortName||a.displayName)+'</button>'}).join('')+'</div>'}
+    else if(live)h+='<div class="m-card" style="padding:12px;text-align:center;background:#6c7bff;color:#fff;border:0">Fan voting opens in the 80th minute</div>';
+    /* Form */
+    h+=formCard(d,m,hc,ac);
+    /* Standings mini */
+    h+=miniStd(d,hc,ac);
+    /* Pitch + stats */
+    h+='<div class="m-h3">Match Stats</div><div class="m-card" style="padding:4px 14px">';
+    var ps=pickStat(d,/^possessionPct$|possession/i),so=pickStat(d,/^shotsOnTarget$/i),ts=pickStat(d,/^totalShots$|^shots$/i);
+    if(ps[0]==null&&so[0]==null&&ts[0]==null)h+='<div class="m-note">Statistics have not been published.</div>';
+    else h+=bar('Possession',ps[0]!=null?Math.round(parseFloat(ps[0]))+'%':null,ps[1]!=null?Math.round(parseFloat(ps[1]))+'%':null)+bar('Shots on Target',so[0],so[1])+bar('Total Shots',ts[0],ts[1]);
+    return h+'</div>'}
   function pickStat(d,re){var out=[null,null];(d.teams||[]).forEach(function(t,i){var s=(t.statistics||[]).find(function(x){return re.test(x.name||'')});var idx=t.homeAway==='away'?1:t.homeAway==='home'?0:i;if(s)out[idx]=s.displayValue});return out}
   function bar(l,a,b){var x=parseFloat(a)||0,y=parseFloat(b)||0,t=x+y||1;return '<div class="m-bar"><div class="t"><b>'+esc(a==null?'–':a)+'</b><span>'+esc(l)+'</span><b>'+esc(b==null?'–':b)+'</b></div><div class="m-trk"><i style="width:'+(x/t*100)+'%"></i><i style="width:'+(y/t*100)+'%;background:#ffffff80"></i></div></div>'}
   function tab(t,d,m,live){
     if(t==='cm')return commentaryTab(d,m,live);
-    if(t==='ov'){
-      var hid=(comp(d,'home')||{}).id,evs=(d.events||[]).map(function(e){var p=e.play||e,ty=(p.type&&p.type.text)||'';return{p:p,ty:ty,time:(e.time&&e.time.displayValue)||(p.clock&&p.clock.displayValue)||'',e:e}}).filter(function(x){return /goal|card|substitution|penalty/i.test(x.ty)&&!/kickoff|halftime/i.test(x.ty)});
-      var h='<div class="m-card" style="padding:6px 14px">'+(evs.length?evs.map(function(x){var p=x.p,pl=(p.participants&&p.participants[0]&&p.participants[0].athlete&&p.participants[0].athlete.displayName)||x.e.text||x.ty,home=p.team&&String(p.team.id)===String(hid),ico=/red/i.test(x.ty)?'🟥':/yellow/i.test(x.ty)?'🟨':/substitution/i.test(x.ty)?'🔁':'⚽';
-        return '<div class="m-ev'+(home?'':' r')+'"><span class="tm">'+esc(x.time)+'</span><span>'+ico+'</span><span>'+esc(pl)+'</span></div>'}).join(''):'<div class="m-note">No match events published yet.</div>')+'</div>';
-      h+='<div class="m-pitch">'+(live?'<span class="lv">LIVE</span>':'')+'</div><div class="m-h3">Match Stats</div><div class="m-card" style="padding:4px 14px">';
-      var ps=pickStat(d,/^possessionPct$|possession/i),so=pickStat(d,/^shotsOnTarget$/i),ts=pickStat(d,/^totalShots$|^shots$/i);
-      if(ps[0]==null&&so[0]==null&&ts[0]==null)h+='<div class="m-note">Statistics have not been published.</div>';
-      else{h+=bar('Possession',ps[0]!=null?Math.round(parseFloat(ps[0]))+'%':null,ps[1]!=null?Math.round(parseFloat(ps[1]))+'%':null)+bar('Shots on Target',so[0],so[1])+bar('Total Shots',ts[0],ts[1])}
-      return h+'</div>'}
+    if(t==='ov')return overviewTab(d,m,live);
     if(t==='st'){var ts2=d.teams||[];if(ts2.length<2)return '<div class="m-note">Match statistics have not been published.</div>';
       var a=ts2.find(function(x){return x.homeAway==='home'})||ts2[0],b=ts2.find(function(x){return x.homeAway==='away'})||ts2[1];
       return '<div class="m-card" style="padding:4px 14px">'+(a.statistics||[]).map(function(s){var o=(b.statistics||[]).find(function(y){return y.name===s.name});return bar(s.label||s.name,s.displayValue,o?o.displayValue:null)}).join('')+'</div>'}
@@ -257,23 +325,24 @@
   function ratingOf(p,ctx){try{var r=matchRating(p,ctx);return r?r.value:''}catch(e){return ''}}
   function espnRows(r){
     var ctx=null;try{ctx=teamCtx(r)}catch(e){}
-    var st=(r.roster||[]).filter(function(p){return p.starter}).map(function(p,i){return{p:p,i:i}}).sort(function(a,b){return depth(a.p)-depth(b.p)||a.i-b.i}).map(function(x){return x.p});
+    var st0=(r.roster||[]).filter(function(p){return p.starter}),hasFP=st0.length>1&&st0.every(function(p){return +p.formationPlace>0});
+    var st=hasFP?st0.slice().sort(function(a,b){return +a.formationPlace-+b.formationPlace}):st0.map(function(p,i){return{p:p,i:i}}).sort(function(a,b){return depth(a.p)-depth(b.p)||a.i-b.i}).map(function(x){return x.p});
     if(!st.length)return null;
     var f=String(r.formation||'').split('-').map(Number).filter(function(n){return n>0});
     var sum=f.reduce(function(a,b){return a+b},0);
     if(sum!==st.length-1){var c=[0,0,0];st.slice(1).forEach(function(p){var d=depth(p);c[d<=1?0:d<=4?1:2]++});f=c.filter(Boolean)}
     var rows=[[st[0]]],k=1;f.forEach(function(n){rows.push(st.slice(k,k+n));k+=n});
-    return rows.map(function(row,i){if(i>0){try{row=row.slice().sort(function(a,b){return lateralRank(a)-lateralRank(b)})}catch(e){}}
+    return rows.map(function(row,i){if(i>0){try{var rk=row.map(lateralRank);if(rk.some(function(v){return v!==rk[0]}))row=row.map(function(p,j){return{p:p,j:j}}).sort(function(a,b){return lateralRank(a.p)-lateralRank(b.p)||a.j-b.j}).map(function(x){return x.p})}catch(e){}}
       return row.map(function(p){var a=p.athlete||{},pl=p.plays||[],g=sv(p,'totalGoals','goals');
         var ph=a.apiPhoto||(a.headshot&&(a.headshot.href||a.headshot))||(a.id?'https://a.espncdn.com/i/headshots/soccer/players/full/'+encodeURIComponent(a.id)+'.png':'');
-        return{id:a.id,num:p.jersey,name:a.shortName||a.displayName||'',photo:ph,rating:ratingOf(p,ctx),goals:g,yc:pl.some(function(e){return e.yellowCard}),rc:pl.some(function(e){return e.redCard}),sub:!!(p.subbedOut||pl.some(function(e){return e.substitution}))}})})}
+        return{id:a.id,num:p.jersey,name:a.shortName||a.displayName||'',photo:ph,rating:ratingOf(p,ctx),goals:g,ass:sv(p,'goalAssists','assists'),yc:pl.some(function(e){return e.yellowCard}),rc:pl.some(function(e){return e.redCard}),sub:!!(p.subbedOut||pl.some(function(e){return e.substitution}))}})})}
   function afRows(t){var st=t.startXI||[];if(!st.length||!st.every(function(p){return p.grid}))return null;var by={};st.forEach(function(p){var g=String(p.grid).split(':');(by[g[0]]=by[g[0]]||[]).push({c:+g[1],p:p})});
     return Object.keys(by).sort(function(a,b){return a-b}).map(function(k){return by[k].sort(function(a,b){return a.c-b.c}).map(function(x){return{num:x.p.number,name:x.p.name,photo:x.p.photo,rating:'',goals:0}})})}
   function rcls(v){v=+v;return v>=8?'b':v>=7?'g':v>=6?'o':'r'}
   function pitchHTML(rows){var n=rows.length;
     return '<div class="m-lp" style="height:'+Math.max(380,n*116)+'px"><i class="bx"></i><i class="cc"></i>'+rows.map(function(r,i){return r.map(function(p,j){
       var ini=String(p.name||'').split(/\s+/).map(function(w){return w[0]||''}).join('').slice(0,2).toUpperCase(),im=p.photo&&/^https:\/\//.test(p.photo)?'<img src="'+esc(p.photo)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'';
-      return '<div class="lp"'+(p.id?' data-mp="'+esc(p.id)+'"':'')+' style="top:'+(n>1?10+i*(80/(n-1)):50)+'%;left:'+((j+1)/(r.length+1)*100)+'%"><span class="pp">'+esc(ini)+im+(p.rc?'<u class="cd rc"></u>':p.yc?'<u class="cd yc"></u>':'')+(p.sub?'<u class="sb">⇄</u>':'')+(p.goals?'<u class="gl">⚽'+(p.goals>1?p.goals:'')+'</u>':'')+'</span>'+(p.rating?'<em class="rt '+rcls(p.rating)+'">'+esc(p.rating)+'</em>':'')+'<b><s>'+esc(p.num||'')+'</s> '+esc(p.name)+'</b></div>'}).join('')}).join('')+'</div>'}
+      return '<div class="lp"'+(p.id?' data-mp="'+esc(p.id)+'"':'')+' style="top:'+(n>1?10+i*(80/(n-1)):50)+'%;left:'+((j+1)/(r.length+1)*100)+'%"><span class="pp">'+esc(ini)+im+(p.rc?'<u class="cd rc"></u>':p.yc?'<u class="cd yc"></u>':'')+(p.sub?'<u class="sb">⇄</u>':'')+(p.goals?'<u class="gl">⚽'+(p.goals>1?p.goals:'')+'</u>':'')+(p.ass?'<u class="as">👟'+(p.ass>1?p.ass:'')+'</u>':'')+'</span>'+(p.rating?'<em class="rt '+rcls(p.rating)+'">'+esc(p.rating)+'</em>':'')+'<b><s>'+esc(p.num||'')+'</s> '+esc(p.name)+'</b></div>'}).join('')}).join('')+'</div>'}
   function lineupTab(d){
     var af0=String(M.det.k).indexOf('af:')===0,pbMode=!af0&&!(d.rosters||[]).length,af=af0||pbMode,SRC=af0?M.det.af:M.det.pb,teams;
     if(pbMode&&SRC===undefined)loadProb();
@@ -402,7 +471,7 @@
     var ns=root.querySelector('.m-scr');if(ns&&!changed)ns.scrollTop=sy;
     if(fi){var el=document.getElementById(fi);if(el&&el.tagName==='INPUT'){el.focus();try{el.setSelectionRange(fs,fs)}catch(e){}}}
     translate();resolvePR();
-    if(M.det&&M.det.tab==='sd')loadStd();if(M.ent&&M.ent.tab==='tb')loadEntStd();if(M.lg)loadLg(M.lg.tab);
+    if(M.det&&(M.det.tab==='sd'||M.det.tab==='ov'))loadStd();if(M.ent&&M.ent.tab==='tb')loadEntStd();if(M.lg)loadLg(M.lg.tab);
     var host=document.getElementById('m-host');if(host&&M.tab==='nations'&&typeof content!=='undefined')host.appendChild(content);
     var dt=document.getElementById('m-dates');if(dt){var on=dt.querySelector('.on');if(on)dt.scrollLeft=on.offsetLeft-dt.clientWidth/2+on.offsetWidth/2}
   }
@@ -426,6 +495,8 @@
     if((el=t.closest('[data-mpd]'))){var pp=el.dataset.mpd,sd=pp[0],dl=pp[1]==='+'?1:-1;if(M.pd){M.pd[sd]=Math.max(0,Math.min(20,M.pd[sd]+dl))}return draw()}
     if((el=t.closest('[data-mpick]'))){M.pick=el.dataset.mpick;M.sheet='pick';M.fq='';return draw()}
     if((el=t.closest('[data-mpk]'))){var pk=el.dataset.mpk.split('|'),opt=teamOpts().find(function(x){return x.id===pk[0]&&x.path===pk[1]});if(opt){M.cmp[M.pick]=opt;loadCmp(M.pick)}M.sheet='';return draw()}
+    if((el=t.closest('[data-mv]'))){var vk2=M.det&&M.det.k;if(vk2){VOTE[vk2]=el.dataset.mv;try{localStorage.setItem('allsport_m_vote',JSON.stringify(VOTE))}catch(er){}}return draw()}
+    if((el=t.closest('[data-mvp]'))){var vk3='p'+(M.det&&M.det.k);VOTE[vk3]=el.dataset.mvp;try{localStorage.setItem('allsport_m_vote',JSON.stringify(VOTE))}catch(er){}return draw()}
     if((el=t.closest('[data-mp]')))return openEnt('player',el.dataset.mp,el.dataset.mpp);
     if((el=t.closest('[data-mt]')))return openEnt('team',el.dataset.mt);
     if((el=t.closest('[data-mteam]'))){var tp=el.dataset.mteam.split('|');return openEnt('team',tp[0],tp[1])}
@@ -442,6 +513,7 @@
       case 'pred':M.det=null;M.ent=null;M.lg=null;M.sub='';M.tab='pred';break;
       case 'cmp':M.det=null;M.ent=null;M.lg=null;M.sub='';M.tab='cmp';break;
       case 'closelg':M.lg=null;break;
+      case 'cmpmatch':var co=M.det&&find(M.det.k);if(co){var cm=co.m;M.cmp={a:{id:String(cm[11]),name:cm[0],path:co.g.path,logo:cm[9],ab:cm[6]},b:{id:String(cm[12]),name:cm[1],path:co.g.path,logo:cm[10],ab:cm[7]}};M.det=null;M.ent=null;M.lg=null;M.tab='cmp';loadCmp('a');loadCmp('b')}break;
       case 'leagueucl':openLg('soccer/uefa.champions','UEFA Champions League');return;
       case 'savepred':if(M.pd){var mo=find(M.pd.k);if(mo){PR[M.pd.k]={h:M.pd.h,a:M.pd.a,t:mo.m[0]+' v '+mo.m[1],d:mo.m[13]};savePR();toast('Prediction saved')}}return;
       case 'remind':var ro=M.det&&find(M.det.k);if(ro&&remindUrl(ro.m)){window.open(remindUrl(ro.m),'_blank')}else toast('Kick-off time is not available.');return;
