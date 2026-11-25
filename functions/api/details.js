@@ -121,7 +121,19 @@ export async function onRequestGet({ request, env }) {
     if (kind === 'match') {
       const d = await get(`${base}/summary?event=${id}`);
       if (!d.header) throw new Error('Unavailable');
-      result = { header: d.header, rosters: d.rosters || [], teams: d.boxscore?.teams || [], players: d.boxscore?.players || [], events: d.keyEvents || d.scoringPlays || d.plays || [], commentary: d.commentary || [], h2h: d.headToHeadGames || [], venue: d.gameInfo?.venue?.fullName || '', season: d.header.season?.year };
+      result = { header: d.header, rosters: d.rosters || [], teams: d.boxscore?.teams || [], players: d.boxscore?.players || [], events: d.keyEvents || d.scoringPlays || d.plays || [], commentary: d.commentary || [], h2h: d.headToHeadGames || [], venue: d.gameInfo?.venue?.fullName || '', season: d.header.season?.year,
+        info: {
+          venue: d.gameInfo?.venue?.fullName || '',
+          city: [d.gameInfo?.venue?.address?.city, d.gameInfo?.venue?.address?.country].filter(Boolean).join(', '),
+          attendance: d.gameInfo?.attendance || null,
+          referee: (d.gameInfo?.officials || [])[0]?.displayName || (d.gameInfo?.officials || [])[0]?.fullName || '',
+          round: d.header?.competitions?.[0]?.notes?.[0]?.headline || '',
+          broadcasts: (d.header?.competitions?.[0]?.broadcasts || []).map((b) => b.media?.shortName || b.name).filter(Boolean),
+          link: ((d.header?.links || []).find((l) => /gamecast|summary/i.test((l.rel || []).join(' '))) || {}).href || '',
+        },
+        form: (d.boxscore?.form || []).map((f) => ({ team: f.team?.id, name: f.team?.displayName, events: (f.events || []).slice(0, 5).map((e) => ({ res: e.gameResult, score: e.score, date: e.gameDate, opp: e.opponent?.displayName, oppLogo: e.opponent?.logo, ha: e.atVs, home: String(e.homeTeamId ?? ''), hs: e.homeTeamScore, as: e.awayTeamScore })) })),
+        predictor: d.predictor ? { homeTeam: { gameProjection: d.predictor.homeTeam?.gameProjection }, awayTeam: { gameProjection: d.predictor.awayTeam?.gameProjection } } : null,
+        winprob: Array.isArray(d.winprobability) && d.winprobability.length ? d.winprobability[d.winprobability.length - 1] : null };
       if (path.startsWith('soccer/') && env?.APIFOOTBALL_KEY) {
         try { result.provider = await enrichWithApiFootball(env, d, result.rosters); } catch { result.provider = { used: false, reason: 'error' }; }
       }
