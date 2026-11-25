@@ -318,26 +318,36 @@
   function translate(){if(M.lang!=='bn')return;var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null),n,a=[];while((n=w.nextNode()))a.push(n);a.forEach(function(n){var t=n.nodeValue.trim();if(BN[t])n.nodeValue=n.nodeValue.replace(t,BN[t])});root.querySelectorAll('input[placeholder]').forEach(function(i){})}
 
   /* ---------- Sofascore-style line-up pitch ---------- */
-  function depth(p){var a=(p.position&&p.position.abbreviation||'').toUpperCase(),n=(p.position&&(p.position.displayName||p.position.name)||'').toLowerCase();
-    if(a==='G'||/goalkeeper/.test(n))return 0;if(/^(CD|LB|RB|SW|LWB|RWB|D)/.test(a)||/back|defend/.test(n))return 1;if(a==='DM'||a==='CDM')return 2;if(/^(AM|CAM)/.test(a))return 4;
-    if(/^(LW|RW|F|CF|ST|SS)/.test(a)||/forward|striker|attack|wing/.test(n))return 5;return 3}
+  function abbrOf(p){return String(p.position&&p.position.abbreviation||'').toUpperCase()}
+  function depth(p){var a=abbrOf(p),n=String(p.position&&(p.position.displayName||p.position.name)||'').toLowerCase();
+    if(a==='G'||a==='GK'||/goalkeeper/.test(n))return 0;
+    if(/^(SW|CD|CB)/.test(a))return 1;
+    if(/^(LB|RB)/.test(a))return 1.2;
+    if(/^(LWB|RWB)/.test(a))return 1.6;
+    if(/^(DM|CDM)/.test(a))return 2;
+    if(/^(AM|CAM|SS)/.test(a))return 4;
+    if(/^(LW|RW)/.test(a))return 4.5;
+    if(/^(CM|LM|RM|M$)/.test(a))return 3;
+    if(/^(CF|F|ST|LF|RF)/.test(a))return 5;
+    if(/back|defend/.test(n))return 1.2;if(/midfield/.test(n))return 3;if(/forward|striker|attack|wing/.test(n))return 5;return 3}
+  /* Facing down the screen (GK at top) a player's RIGHT is on the screen LEFT — same as Sofascore */
+  function sideRank(p){var a=abbrOf(p);if(/^R(B|WB|M|W)$/.test(a))return 0;if(/-R$/.test(a)||/^RF$|^RCB/.test(a))return 1;if(/^L(B|WB|M|W)$/.test(a))return 4;if(/-L$/.test(a)||/^LF$|^LCB/.test(a))return 3;return 2}
   function sv(p){try{return statVal.apply(null,arguments)}catch(e){return 0}}
   function ratingOf(p,ctx){try{var r=matchRating(p,ctx);return r?r.value:''}catch(e){return ''}}
   function espnRows(r){
     var ctx=null;try{ctx=teamCtx(r)}catch(e){}
-    var st0=(r.roster||[]).filter(function(p){return p.starter}),hasFP=st0.length>1&&st0.every(function(p){return +p.formationPlace>0});
-    var st=hasFP?st0.slice().sort(function(a,b){return +a.formationPlace-+b.formationPlace}):st0.map(function(p,i){return{p:p,i:i}}).sort(function(a,b){return depth(a.p)-depth(b.p)||a.i-b.i}).map(function(x){return x.p});
+    var st=(r.roster||[]).filter(function(p){return p.starter}).map(function(p,i){return{p:p,i:i}}).sort(function(a,b){return depth(a.p)-depth(b.p)||a.i-b.i}).map(function(x){return x.p});
     if(!st.length)return null;
     var f=String(r.formation||'').split('-').map(Number).filter(function(n){return n>0});
     var sum=f.reduce(function(a,b){return a+b},0);
     if(sum!==st.length-1){var c=[0,0,0];st.slice(1).forEach(function(p){var d=depth(p);c[d<=1?0:d<=4?1:2]++});f=c.filter(Boolean)}
     var rows=[[st[0]]],k=1;f.forEach(function(n){rows.push(st.slice(k,k+n));k+=n});
-    return rows.map(function(row,i){if(i>0){try{var rk=row.map(lateralRank);if(rk.some(function(v){return v!==rk[0]}))row=row.map(function(p,j){return{p:p,j:j}}).sort(function(a,b){return lateralRank(a.p)-lateralRank(b.p)||a.j-b.j}).map(function(x){return x.p})}catch(e){}}
+    return rows.map(function(row,i){if(i>0)row=row.map(function(p,j){return{p:p,j:j}}).sort(function(a,b){return sideRank(a.p)-sideRank(b.p)||a.j-b.j}).map(function(x){return x.p});
       return row.map(function(p){var a=p.athlete||{},pl=p.plays||[],g=sv(p,'totalGoals','goals');
         var ph=a.apiPhoto||(a.headshot&&(a.headshot.href||a.headshot))||(a.id?'https://a.espncdn.com/i/headshots/soccer/players/full/'+encodeURIComponent(a.id)+'.png':'');
         return{id:a.id,num:p.jersey,name:a.shortName||a.displayName||'',photo:ph,rating:ratingOf(p,ctx),goals:g,ass:sv(p,'goalAssists','assists'),yc:pl.some(function(e){return e.yellowCard}),rc:pl.some(function(e){return e.redCard}),sub:!!(p.subbedOut||pl.some(function(e){return e.substitution}))}})})}
   function afRows(t){var st=t.startXI||[];if(!st.length||!st.every(function(p){return p.grid}))return null;var by={};st.forEach(function(p){var g=String(p.grid).split(':');(by[g[0]]=by[g[0]]||[]).push({c:+g[1],p:p})});
-    return Object.keys(by).sort(function(a,b){return a-b}).map(function(k){return by[k].sort(function(a,b){return a.c-b.c}).map(function(x){return{num:x.p.number,name:x.p.name,photo:x.p.photo,rating:'',goals:0}})})}
+    return Object.keys(by).sort(function(a,b){return a-b}).map(function(k){return by[k].sort(function(a,b){return b.c-a.c}).map(function(x){return{num:x.p.number,name:x.p.name,photo:x.p.photo,rating:'',goals:0}})})}
   function rcls(v){v=+v;return v>=8?'b':v>=7?'g':v>=6?'o':'r'}
   function pitchHTML(rows){var n=rows.length;
     return '<div class="m-lp" style="height:'+Math.max(380,n*116)+'px"><i class="bx"></i><i class="cc"></i>'+rows.map(function(r,i){return r.map(function(p,j){
